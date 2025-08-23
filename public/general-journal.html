@@ -284,17 +284,17 @@
   <script>
     async function loadGeneralJournal() {
       try {
-        console.log('Starting to load journal entries...');
+        //console.log('Starting to load journal entries...');
         
         const entriesResponse = await fetch('/journal');
-        console.log('Entries response status:', entriesResponse.status);
+        //console.log('Entries response status:', entriesResponse.status);
         
         if (!entriesResponse.ok) {
           throw new Error(`Failed to fetch entries: ${entriesResponse.status} ${entriesResponse.statusText}`);
         }
         
         const accountsResponse = await fetch('/accounts');
-        console.log('Accounts response status:', accountsResponse.status);
+        //console.log('Accounts response status:', accountsResponse.status);
         
         if (!accountsResponse.ok) {
           throw new Error(`Failed to fetch accounts: ${accountsResponse.status} ${accountsResponse.statusText}`);
@@ -303,8 +303,8 @@
         const entries = await entriesResponse.json();
         const accounts = await accountsResponse.json();
         
-        console.log('Loaded entries:', entries.length);
-        console.log('Loaded accounts:', accounts.length);
+        //console.log('Loaded entries:', entries.length);
+        //console.log('Loaded accounts:', accounts.length);
         
         // Create account lookup map
         const accountMap = {};
@@ -451,10 +451,10 @@
     function openAttachmentPreview(url, name, fileExtension) {
       // For Google Drive files, use redirect page to bypass TrustedScript issues
       if (url.includes('drive.google.com')) {
-        console.log('=== GOOGLE DRIVE DEBUG ===');
-        console.log('Original URL:', url);
-        console.log('Name:', name);
-        console.log('File Extension:', fileExtension);
+        //console.log('=== GOOGLE DRIVE DEBUG ===');
+        //console.log('Original URL:', url);
+        //console.log('Name:', name);
+        //console.log('File Extension:', fileExtension);
         
         // Extract ID from various Google Drive URL formats
         let driveId = null;
@@ -467,18 +467,18 @@
           driveId = url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
         }
         
-        console.log('Extracted Drive ID:', driveId);
+        //console.log('Extracted Drive ID:', driveId);
         
         let finalUrl = url;
         if (driveId) {
           // For folders, construct proper folder URL
           finalUrl = `https://drive.google.com/drive/folders/${driveId}`;
-          console.log('Constructed folder URL:', finalUrl);
+          //console.log('Constructed folder URL:', finalUrl);
         }
         
         // Use redirect page to bypass TrustedScript issues
         const redirectUrl = `/drive-redirect.html?url=${encodeURIComponent(finalUrl)}`;
-        console.log('Using redirect URL:', redirectUrl);
+        //console.log('Using redirect URL:', redirectUrl);
         window.open(redirectUrl, '_blank');
         return;
       }

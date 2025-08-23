@@ -543,8 +543,8 @@ document.getElementById("journalForm").addEventListener("submit", async e => {
     lines
   };
 
-  console.log('Sending payload to server:', payload);
-  console.log('Attachments being sent:', attachments);
+  //console.log('Sending payload to server:', payload);
+  //console.log('Attachments being sent:', attachments);
 
   try {
     const res = await fetch(`${apiUrl}/journal`, {
@@ -630,13 +630,13 @@ async function loadConfig() {
 
 // Load Google APIs
 function loadGoogleAPIs() {
-  console.log('Starting Google API initialization...');
+  //console.log('Starting Google API initialization...');
   
   gapi.load('picker', {
     callback: () => {
-      console.log('Google Picker API loaded');
+      //console.log('Google Picker API loaded');
       pickerApiLoaded = true;
-      console.log('Google APIs ready');
+      //console.log('Google APIs ready');
     },
     onerror: () => {
       console.error('Failed to load Google APIs');

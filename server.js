@@ -62,15 +62,15 @@ const JournalEntry = mongoose.model('JournalEntry', entrySchema, 'journalentries
 
 // --- Helpers ---
 async function getNextTid() {
-  console.log("Getting next trans_id...");
+  //console.log("Getting next trans_id...");
   const lastEntry = await JournalEntry.findOne().sort({ trans_id: -1 });
-  console.log("Last entry:", lastEntry);
+  //console.log("Last entry:", lastEntry);
   return lastEntry ? lastEntry.trans_id + 1 : 1;  
 } 
 // --- Routes ---
 // Create journal entry
 app.post("/journal", async (req, res) => {
-  console.log("Received request body:", req.body);  // Add this log
+  //console.log("Received request body:", req.body);  // Add this log
   try {
     const trans_id = await getNextTid();
     const entry = new JournalEntry({ ...req.body, trans_id });
@@ -94,19 +94,19 @@ app.get("/journal", async (req, res) => {
 // Debug endpoint to check collections and entry 59
 app.get("/debug/collections", async (req, res) => {
   try {
-    console.log('\n=== DEBUG: Checking Collections ===');
+    //console.log('\n=== DEBUG: Checking Collections ===');
     
     // List all collections
     const collections = await mongoose.connection.db.listCollections().toArray();
-    console.log('Available collections:', collections.map(c => c.name));
+    //console.log('Available collections:', collections.map(c => c.name));
     
     // Check current collection
-    console.log('Current model collection:', JournalEntry.collection.name);
-    console.log('Database name:', JournalEntry.db.databaseName);
+    //console.log('Current model collection:', JournalEntry.collection.name);
+    //console.log('Database name:', JournalEntry.db.databaseName);
     
     // Count entries in current collection
     const currentCount = await JournalEntry.countDocuments();
-    console.log(`Entries in current collection: ${currentCount}`);
+    //console.log(`Entries in current collection: ${currentCount}`);
     
     // Try to find entry 59 in different possible collections
     const possibleCollections = ['journalentries', 'JournalEntry', 'journal_entries'];
@@ -126,7 +126,7 @@ app.get("/debug/collections", async (req, res) => {
           hasEntry59Number: !!entry59Num
         };
         
-        console.log(`Collection "${collectionName}": ${count} entries, entry 59 as string: ${!!entry59}, as number: ${!!entry59Num}`);
+        //console.log(`Collection "${collectionName}": ${count} entries, entry 59 as string: ${!!entry59}, as number: ${!!entry59Num}`);
       } catch (err) {
         results[collectionName] = { error: err.message };
       }
@@ -147,7 +147,7 @@ app.get("/debug/collections", async (req, res) => {
 // Get single journal entry (using MongoDB _id)
 app.get("/journal/:id", async (req, res) => {
   try {
-    console.log(`Looking for journal entry with ID: ${req.params.id}`);
+    //console.log(`Looking for journal entry with ID: ${req.params.id}`);
     
     // Always use MongoDB _id for lookups
     if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
@@ -157,11 +157,11 @@ app.get("/journal/:id", async (req, res) => {
     const entry = await JournalEntry.findById(req.params.id);
     
     if (!entry) {
-      console.log(`No entry found for MongoDB _id: ${req.params.id}`);
+      //console.log(`No entry found for MongoDB _id: ${req.params.id}`);
       return res.status(404).json({ error: "Journal entry not found" });
     }
     
-    console.log(`✅ Found entry: trans_id=${entry.trans_id}, desc="${entry.description}"`);
+    //console.log(`✅ Found entry: trans_id=${entry.trans_id}, desc="${entry.description}"`);
     res.json(entry);
   } catch (err) {
     console.log(`❌ Error finding entry: ${err.message}`);
@@ -183,7 +183,7 @@ app.put("/journal/:id", async (req, res) => {
       return res.status(404).json({ error: "Journal entry not found" });
     }
     
-    console.log(`✅ Updated entry: trans_id=${updated.trans_id}, desc="${updated.description}"`);
+    //console.log(`✅ Updated entry: trans_id=${updated.trans_id}, desc="${updated.description}"`);
     res.json(updated);
   } catch (err) {
     console.log(`❌ Error updating entry: ${err.message}`);

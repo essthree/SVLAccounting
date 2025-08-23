@@ -564,13 +564,13 @@ let oauthToken = null;
 
 // Load Google APIs
 function loadGoogleAPIs() {
-  console.log('Starting Google API initialization...');
+  //console.log('Starting Google API initialization...');
   
   gapi.load('picker', {
     callback: () => {
-      console.log('Google Picker API loaded');
+      //console.log('Google Picker API loaded');
       pickerApiLoaded = true;
-      console.log('Google APIs ready');
+      //console.log('Google APIs ready');
     },
     onerror: () => {
       console.error('Failed to load Google APIs');
