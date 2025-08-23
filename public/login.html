@@ -289,10 +289,12 @@
       .then(data => {
         addDebugLog('Server response data', data);
         if (data.success) {
-          addDebugLog('Login successful - STOPPING REDIRECT for debugging');
-          showError('Login successful! (Redirect disabled for debugging)');
-          // TEMPORARILY DISABLE REDIRECT FOR DEBUGGING
-          // window.location.href = '/';
+          addDebugLog('Login successful - redirecting to main app');
+          showError('Login successful! Redirecting...');
+          // Redirect to main app
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1000);
         } else {
           addDebugLog('Login failed', { error: data.error });
           showError(data.error || 'Login failed');
