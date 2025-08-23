@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>General Journal</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; max-width: 1000px; width: fit-content; margin: 20px auto; }
+    h2 { font-size: 16px; }
+    nav ul { list-style: none; padding: 0; margin-bottom: 20px; font-size: 11px; }
+    nav li { display: inline; margin-right: 15px; }
+    nav a { text-decoration: none; color: #007bff; }
+    nav a:hover { text-decoration: underline; }
+    nav a.current { background-color: #007bff; color: white; padding: 4px 8px; border-radius: 4px; }
+    .entry-section { margin-bottom: 20px; border: 1px solid #ddd; padding: 10px; }
+    .entry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .entry-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .edit-btn {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .edit-btn:hover {
+      background-color: #0056b3;
+    }
+    .attachment-btn {
+      background-color: white;
+      color: black;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+      font-weight: bold;
+    }
+    .attachment-btn:hover {
+      background-color: #f8f9fa;
+    }
+    .entries-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .entries-table th, .entries-table td { border: 1px solid #ddd; padding: 4px; text-align: left; }
+    .entries-table th { background-color: #e9ecef; font-size: 10px; font-weight: bold; }
+    .debit { color: #28a745; }
+    .credit { color: #dc3545; }
+    .loading { text-align: center; padding: 15px; color: #6c757d; font-size: 12px; }
+    .attachments-section {
+      margin-top: 15px;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+    }
+    
+    .attachments-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 10px;
+    }
+    
+    .attachment-card {
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .attachment-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      border-color: #007bff;
+    }
+    
+    .attachment-preview {
+      position: relative;
+      height: 120px;
+      background: #f8f9fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    
+    .attachment-thumbnail {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .file-icon {
+      font-size: 48px;
+      opacity: 0.7;
+    }
+    
+    .attachment-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 123, 255, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    
+    .attachment-card:hover .attachment-overlay {
+      opacity: 1;
+    }
+    
+    .preview-text {
+      color: white;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    
+    .attachment-info {
+      padding: 12px;
+    }
+    
+    .attachment-name {
+      padding: 10px 10px 5px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #333;
+      text-align: center;
+      word-break: break-word;
+    }
+    
+    .attachment-url {
+      padding: 10px !important;
+      font-size: 14px !important;
+      color: black !important;
+      text-align: center !important;
+      word-break: break-all !important;
+      line-height: 1.2 !important;
+      background: yellow !important;
+      border: 2px solid red !important;
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      height: auto !important;
+      width: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+    
+    .attachment-type {
+      font-size: 11px;
+      color: #666;
+      text-transform: capitalize;
+      background: #e9ecef;
+      padding: 2px 6px;
+      border-radius: 12px;
+      display: inline-block;
+    }
+    
+    /* Preview Modal Styles */
+    .preview-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    
+    .preview-modal-content {
+      background: white;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 1000px;
+      height: 90%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    .preview-header {
+      padding: 20px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8f9fa;
+    }
+    
+    .preview-header h3 {
+      margin: 0;
+      font-size: 18px;
+      color: #333;
+    }
+    
+    .preview-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    
+    .btn-secondary {
+      padding: 8px 16px;
+      background: #6c757d;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+    
+    .btn-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #666;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .btn-close:hover {
+      color: #333;
+    }
+    
+    .preview-body {
+      flex: 1;
+      padding: 20px;
+      overflow: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="index.html">Journal Entry</a></li>
+      <li><a href="accounts.html">Chart of Accounts</a></li>
+      <li><a href="general-journal.html" class="current">General Journal</a></li>
+      <li><a href="account-ledger.html">Account Ledger</a></li>
+    </ul>
+  </nav>
+  
+  <h2>General Journal</h2>
+  
+  <div style="margin-bottom: 20px;">
+    <label for="sortDirection" style="font-size: 11px; margin-right: 10px;">Sort by Date:</label>
+    <select id="sortDirection" style="font-size: 11px; padding: 4px;">
+      <option value="desc">Newest First</option>
+      <option value="asc">Oldest First</option>
+    </select>
+  </div>
+  
+  <div id="loading" class="loading">Loading journal entries...</div>
+  <div id="journalContainer"></div>
+
+  <script>
+    async function loadGeneralJournal() {
+      try {
+        console.log('Starting to load journal entries...');
+        
+        const entriesResponse = await fetch('/journal');
+        console.log('Entries response status:', entriesResponse.status);
+        
+        if (!entriesResponse.ok) {
+          throw new Error(`Failed to fetch entries: ${entriesResponse.status} ${entriesResponse.statusText}`);
+        }
+        
+        const accountsResponse = await fetch('/accounts');
+        console.log('Accounts response status:', accountsResponse.status);
+        
+        if (!accountsResponse.ok) {
+          throw new Error(`Failed to fetch accounts: ${accountsResponse.status} ${accountsResponse.statusText}`);
+        }
+        
+        const entries = await entriesResponse.json();
+        const accounts = await accountsResponse.json();
+        
+        console.log('Loaded entries:', entries.length);
+        console.log('Loaded accounts:', accounts.length);
+        
+        // Create account lookup map
+        const accountMap = {};
+        accounts.forEach(account => {
+          accountMap[account.number] = account.name;
+        });
+        
+        displayEntries(entries, accountMap);
+      } catch (error) {
+        console.error('Detailed error loading journal entries:', error);
+        document.getElementById('loading').innerHTML = `Error: ${error.message}. Check console for details.`;
+      }
+    }
+
+    function sortEntries(entries, direction) {
+      return entries.sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        
+        if (direction === 'asc') {
+          return dateA - dateB;
+        } else {
+          return dateB - dateA;
+        }
+      });
+    }
+    
+    function displayEntries(entries, accountMap) {
+      const container = document.getElementById('journalContainer');
+      const loading = document.getElementById('loading');
+      
+      if (entries.length === 0) {
+        loading.innerHTML = 'No journal entries found.';
+        return;
+      }
+      
+      // Clear container first
+      container.innerHTML = '';
+      loading.style.display = 'none';
+      
+      // Sort entries by selected direction
+      const sortDirection = document.getElementById('sortDirection').value;
+      const sortedEntries = sortEntries([...entries], sortDirection);
+      
+      sortedEntries.forEach(entry => {
+        // Create entry section
+        const entrySection = document.createElement('div');
+        entrySection.className = 'entry-section';
+        
+        // Entry header with date, description and edit button
+        const header = document.createElement('div');
+        header.className = 'entry-header';
+        const formattedDate = new Date(entry.date).toLocaleDateString();
+        header.innerHTML = `
+          <h3>Entry #${entry.trans_id} - ${formattedDate}</h3>
+          <div class="entry-actions">
+            ${entry.attachments && entry.attachments.length > 0 ? 
+              `<button class="attachment-btn" onclick="toggleAttachments(${entry.trans_id})" title="View Attachments">📎</button>` : 
+              ''}
+            <button class="edit-btn" onclick="editEntry('${entry._id}')">Edit</button>
+          </div>
+        `;
+        entrySection.appendChild(header);
+        
+        // Entries table
+        const table = document.createElement('table');
+        table.className = 'entries-table';
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>Account No.</th>
+              <th>Account Name</th>
+              <th>Debit</th>
+              <th>Credit</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${entry.lines.map(line => `
+              <tr>
+                <td>${line.account_no ?? line.account}</td>
+                <td>${accountMap[line.account_no] || line.account_name || ""}</td>
+                <td class="debit">${line.debit ? line.debit.toFixed(2) : ''}</td>
+                <td class="credit">${line.credit ? line.credit.toFixed(2) : ''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        `;
+        
+        entrySection.appendChild(table);
+        
+        // Add hidden attachments section for toggle functionality
+        if (entry.attachments && entry.attachments.length > 0) {
+          const attachmentsSection = document.createElement('div');
+          attachmentsSection.className = 'attachments-section';
+          attachmentsSection.id = `attachments-${entry.trans_id}`;
+          attachmentsSection.style.display = 'none';
+          attachmentsSection.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 12px; font-size: 12px; color: #333;">📎 Attachments:</div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              ${entry.attachments.map(attachment => {
+                const fileExtension = attachment.name ? attachment.name.split('.').pop().toLowerCase() : '';
+                let fileIcon = '📄';
+                
+                if (attachment.url && attachment.url.includes('drive.google.com')) {
+                  if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileExtension)) {
+                    fileIcon = '🖼️';
+                  } else if (['pdf'].includes(fileExtension)) {
+                    fileIcon = '📄';
+                  } else if (['doc', 'docx'].includes(fileExtension)) {
+                    fileIcon = '📝';
+                  } else if (['xls', 'xlsx'].includes(fileExtension)) {
+                    fileIcon = '📊';
+                  }
+                }
+                
+                return `
+                  <div onclick="openAttachmentPreview('${attachment.url}', '${attachment.name}', '${fileExtension}')" 
+                       style="cursor: pointer; padding: 8px; border-radius: 6px; background: #f8f9fa; border: 1px solid #e9ecef; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;"
+                       onmouseover="this.style.background='#e9ecef'; this.style.borderColor='#007bff';"
+                       onmouseout="this.style.background='#f8f9fa'; this.style.borderColor='#e9ecef';"
+                       title="${attachment.name}">
+                    <span style="font-size: 16px;">${fileIcon}</span>
+                    <span style="font-size: 11px; color: #333; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${attachment.name}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `;
+          entrySection.appendChild(attachmentsSection);
+        }
+        
+        container.appendChild(entrySection);
+      });
+    }
+    
+    function extractGoogleDriveFileId(url) {
+      const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      return match ? match[1] : null;
+    }
+    
+    function openAttachmentPreview(url, name, fileExtension) {
+      // For Google Drive files, use redirect page to bypass TrustedScript issues
+      if (url.includes('drive.google.com')) {
+        console.log('=== GOOGLE DRIVE DEBUG ===');
+        console.log('Original URL:', url);
+        console.log('Name:', name);
+        console.log('File Extension:', fileExtension);
+        
+        // Extract ID from various Google Drive URL formats
+        let driveId = null;
+        
+        if (url.includes('/folders/')) {
+          driveId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1];
+        } else if (url.includes('/file/d/')) {
+          driveId = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+        } else if (url.includes('/open?id=')) {
+          driveId = url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
+        }
+        
+        console.log('Extracted Drive ID:', driveId);
+        
+        let finalUrl = url;
+        if (driveId) {
+          // For folders, construct proper folder URL
+          finalUrl = `https://drive.google.com/drive/folders/${driveId}`;
+          console.log('Constructed folder URL:', finalUrl);
+        }
+        
+        // Use redirect page to bypass TrustedScript issues
+        const redirectUrl = `/drive-redirect.html?url=${encodeURIComponent(finalUrl)}`;
+        console.log('Using redirect URL:', redirectUrl);
+        window.open(redirectUrl, '_blank');
+        return;
+      }
+      
+      // For images, show in modal
+      if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileExtension)) {
+        const modal = document.createElement('div');
+        modal.className = 'preview-modal';
+        modal.innerHTML = `
+          <div class="preview-modal-content">
+            <div class="preview-header">
+              <h3>${name}</h3>
+              <div class="preview-actions">
+                <a href="${url}" target="_blank" class="btn-secondary">Open Original</a>
+                <button onclick="closePreviewModal()" class="btn-close">✕</button>
+              </div>
+            </div>
+            <div class="preview-body">
+              <img src="${url}" style="max-width: 100%; max-height: 80vh; object-fit: contain;">
+            </div>
+          </div>
+        `;
+        
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) closePreviewModal();
+        });
+      } else {
+        // For other file types, open in new tab
+        window.open(url, '_blank');
+      }
+    }
+    
+    function closePreviewModal() {
+      const modal = document.querySelector('.preview-modal');
+      if (modal) modal.remove();
+    }
+    
+    function openAttachment(url) {
+      window.open(url, '_blank');
+    }
+    
+    function editEntry(mongoId) {
+      window.location.href = `edit-journal.html?id=${mongoId}`;
+    }
+    
+    function toggleAttachments(transId) {
+      const attachmentsSection = document.getElementById(`attachments-${transId}`);
+      if (attachmentsSection) {
+        attachmentsSection.style.display = attachmentsSection.style.display === 'none' ? 'block' : 'none';
+      }
+    }
+    
+    // Add sort direction change listener
+    document.getElementById('sortDirection').addEventListener('change', function() {
+      // Re-display entries with new sort order
+      const container = document.getElementById('journalContainer');
+      if (container.children.length > 0) {
+        // Only re-sort if entries are already loaded
+        loadGeneralJournal();
+      }
+    });
+    
+    // Load journal when page loads
+    document.addEventListener('DOMContentLoaded', loadGeneralJournal);
+  </script>
+</body>
+</html>

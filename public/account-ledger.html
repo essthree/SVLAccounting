@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Account Ledger</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; max-width: 1000px; width: fit-content; margin: 20px auto; }
+    h2 { font-size: 16px; }
+    nav ul { list-style: none; padding: 0; margin-bottom: 20px; font-size: 11px; }
+    nav li { display: inline; margin-right: 15px; }
+    nav a { text-decoration: none; color: #007bff; }
+    nav a:hover { text-decoration: underline; }
+    nav a.current { background-color: #007bff; color: white; padding: 4px 8px; border-radius: 4px; }
+    .account-section { margin-bottom: 20px; border: 1px solid #ddd; padding: 10px; }
+    .account-header { background-color: #f8f9fa; padding: 8px; margin: -10px -10px 10px -10px; }
+    .account-title { margin: 0; color: #495057; font-size: 14px; }
+    .entries-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .entries-table th, .entries-table td { border: 1px solid #ddd; padding: 4px; text-align: left; }
+    .entries-table th { background-color: #e9ecef; font-size: 10px; font-weight: bold; }
+    .debit { color: #28a745; }
+    .credit { color: #dc3545; }
+    .balance-row { background-color: #f8f9fa; font-weight: bold; border-top: 2px solid #495057; font-size: 11px; }
+    .balance-amount { font-size: 11px; font-weight: bold; }
+    .loading { text-align: center; padding: 15px; color: #6c757d; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="index.html">Journal Entry</a></li>
+      <li><a href="accounts.html">Chart of Accounts</a></li>
+      <li><a href="general-journal.html">General Journal</a></li>
+      <li><a href="account-ledger.html" class="current">Account Ledger</a></li>
+    </ul>
+  </nav>
+  
+  <h2>Account Ledger</h2>
+  <div id="loading" class="loading">Loading account ledger...</div>
+  <div id="ledgerContainer"></div>
+
+  <script>
+    async function loadAccountLedger() {
+      try {
+        // Fetch accounts and journal entries
+        const [accountsResponse, entriesResponse] = await Promise.all([
+          fetch('/accounts'),
+          fetch('/journal')
+        ]);
+        
+        const accounts = await accountsResponse.json();
+        const entries = await entriesResponse.json();
+        
+        // Create account lookup for easy access
+        const accountLookup = {};
+        accounts.forEach(acc => {
+          accountLookup[acc.number] = acc;
+        });
+        
+        // Group entries by account
+        const accountEntries = {};
+        
+        entries.forEach(entry => {
+          entry.lines.forEach(line => {
+            const accountNo = line.account_no;
+            if (!accountEntries[accountNo]) {
+              accountEntries[accountNo] = [];
+            }
+            
+            // Add entry info to the line for display
+            accountEntries[accountNo].push({
+              ...line,
+              trans_id: entry.trans_id,
+              date: entry.date,
+              description: entry.description
+            });
+          });
+        });
+        
+        // Sort entries within each account by date
+        Object.keys(accountEntries).forEach(accountNo => {
+          accountEntries[accountNo].sort((a, b) => new Date(a.date) - new Date(b.date));
+        });
+        
+        // Render the ledger
+        renderLedger(accountEntries, accountLookup);
+        
+      } catch (error) {
+        console.error('Error loading account ledger:', error);
+        document.getElementById('loading').innerHTML = 'Error loading account ledger. Please try again.';
+      }
+    }
+    
+    function renderLedger(accountEntries, accountLookup) {
+      const container = document.getElementById('ledgerContainer');
+      const loading = document.getElementById('loading');
+      
+      if (Object.keys(accountEntries).length === 0) {
+        loading.innerHTML = 'No journal entries found.';
+        return;
+      }
+      
+      loading.style.display = 'none';
+      
+      // Sort accounts by account number
+      const sortedAccountNos = Object.keys(accountEntries).sort((a, b) => parseInt(a) - parseInt(b));
+      
+      sortedAccountNos.forEach(accountNo => {
+        const account = accountLookup[accountNo];
+        const entries = accountEntries[accountNo];
+        
+        // Create account section
+        const accountSection = document.createElement('div');
+        accountSection.className = 'account-section';
+        
+        // Account header
+        const header = document.createElement('div');
+        header.className = 'account-header';
+        header.innerHTML = `
+          <h3 class="account-title">
+            ${accountNo} - ${account ? account.name : 'Unknown Account'}
+            ${account ? `(${account.type})` : ''}
+          </h3>
+        `;
+        accountSection.appendChild(header);
+        
+        // Calculate account balance
+        let totalDebits = 0;
+        let totalCredits = 0;
+        entries.forEach(entry => {
+          totalDebits += entry.debit || 0;
+          totalCredits += entry.credit || 0;
+        });
+        
+        const balance = totalDebits - totalCredits;
+        const balanceType = balance >= 0 ? 'debit' : 'credit';
+        const balanceAmount = Math.abs(balance);
+        
+        // Entries table
+        const table = document.createElement('table');
+        table.className = 'entries-table';
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Trans ID</th>
+              <th>Description</th>
+              <th>Debit</th>
+              <th>Credit</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${entries.map(entry => `
+              <tr>
+                <td>${new Date(entry.date).toLocaleDateString()}</td>
+                <td>${entry.trans_id}</td>
+                <td>${entry.description}</td>
+                <td class="debit">${entry.debit ? entry.debit.toFixed(2) : ''}</td>
+                <td class="credit">${entry.credit ? entry.credit.toFixed(2) : ''}</td>
+              </tr>
+            `).join('')}
+            <tr class="balance-row">
+              <td colspan="3"><strong>Account Balance:</strong></td>
+              <td class="balance-amount ${balanceType}">${balanceType === 'debit' ? balanceAmount.toFixed(2) : ''}</td>
+              <td class="balance-amount ${balanceType}">${balanceType === 'credit' ? balanceAmount.toFixed(2) : ''}</td>
+            </tr>
+          </tbody>
+        `;
+        
+        accountSection.appendChild(table);
+        container.appendChild(accountSection);
+      });
+    }
+    
+    // Load ledger when page loads
+    document.addEventListener('DOMContentLoaded', loadAccountLedger);
+  </script>
+</body>
+</html>

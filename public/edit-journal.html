@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Edit Journal Entry</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f8f9fa;
+    color: #333;
+  }
+  
+  nav {
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+  }
+  
+  nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  
+  nav a {
+    text-decoration: none;
+    color: #007bff;
+    font-weight: 500;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+  }
+  
+  nav a:hover {
+    background-color: #e9ecef;
+  }
+  
+  .container {
+    max-width: 800px;
+    width: fit-content;
+    margin: 0 auto;
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  
+  h2 {
+    color: #495057;
+    margin-bottom: 25px;
+    font-size: 24px;
+    text-align: center;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #495057;
+  }
+  
+  input[type="date"],
+  input[type="text"],
+  input[type="number"],
+  select {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+  }
+  
+  input:focus,
+  select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+  }
+  
+  .lines-header {
+    display: grid;
+    grid-template-columns: 3fr 1fr 1fr 80px;
+    gap: 10px;
+    padding: 10px;
+    background-color: #e9ecef;
+    border-radius: 6px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  
+  .journal-line {
+    display: grid;
+    grid-template-columns: 3fr 1fr 1fr 80px;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    align-items: center;
+  }
+  
+  .journal-line select,
+  .journal-line input {
+    margin: 0;
+    padding: 8px;
+  }
+  
+  .remove-line-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  
+  .remove-line-btn:hover {
+    background-color: #c82333;
+  }
+  
+  .add-line-btn {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+  
+  .add-line-btn:hover {
+    background-color: #0056b3;
+  }
+  
+  .totals-row {
+    display: grid;
+    grid-template-columns: 3fr 1fr 1fr 80px;
+    gap: 10px;
+    padding: 15px 10px;
+    background-color: #f8f9fa;
+    border: 2px solid #495057;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-weight: bold;
+    align-items: center;
+  }
+  
+  .balance-check {
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-align: center;
+  }
+  
+  .in-balance {
+    background-color: #d4edda;
+    color: #155724;
+  }
+  
+  .out-of-balance {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+  
+  .submit-btn:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+  }
+  
+  .submit-btn {
+    background-color: #28a745;
+    color: white;
+    padding: 12px 30px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    width: 100%;
+    margin-top: 20px;
+  }
+  
+  .submit-btn:hover {
+    background-color: #218838;
+  }
+  
+  .submit-btn:active {
+    transform: translateY(1px);
+  }
+  
+  .delete-btn {
+    background-color: #dc3545;
+    color: white;
+    padding: 12px 30px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    width: 100%;
+    margin-top: 10px;
+  }
+  
+  .delete-btn:hover {
+    background-color: #c82333;
+  }
+  
+  #message {
+    margin-top: 20px;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: 500;
+    text-align: center;
+    display: none;
+  }
+  
+  .success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+  }
+  
+  .error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+  }
+  
+  .section-title {
+    font-size: 18px;
+    color: #495057;
+    margin: 25px 0 15px 0;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e9ecef;
+  }
+  
+  .loading {
+    text-align: center;
+    padding: 20px;
+    color: #6c757d;
+  }
+
+  .attachment-row {
+    display: grid;
+    grid-template-columns: 120px 2fr 3fr 80px;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+  }
+
+  .attachment-type,
+  .attachment-name,
+  .attachment-url {
+    padding: 8px;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+
+  .remove-attachment-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 11px;
+  }
+
+  .browse-drive-btn {
+    background-color: #4285f4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 11px;
+    margin-left: 5px;
+  }
+
+  .browse-drive-btn:hover {
+    background-color: #3367d6;
+  }
+
+  .attachment-url-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+</style>
+  <!-- Google APIs -->
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script src="https://accounts.google.com/gsi/client"></script>
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="index.html">Journal Entry</a></li>
+      <li><a href="accounts.html">Chart of Accounts</a></li>
+      <li><a href="general-journal.html">General Journal</a></li>
+      <li><a href="account-ledger.html">Account Ledger</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+    <h2>Edit Journal Entry</h2>
+    <div id="loading" class="loading">Loading journal entry...</div>
+    
+    <form id="journalForm" style="display: none;">
+      <div class="form-group">
+        <label for="date">Date</label>
+        <input type="date" id="date" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="description">Description</label>
+        <input type="text" id="description" placeholder="Enter transaction description" required>
+      </div>
+
+      <div class="section-title">Attachments</div>
+      <div id="attachments-container">
+        <!-- Attachment rows will be added here -->
+      </div>
+      <button type="button" id="addAttachmentBtn" class="add-line-btn">+ Add Attachment</button>
+
+      <div class="section-title">Journal Entry Lines</div>
+      
+      <div class="lines-header">
+        <div class="line-account">Account</div>
+        <div class="line-debit">Debit</div>
+        <div class="line-credit">Credit</div>
+        <div class="line-action">Action</div>
+      </div>
+      
+      <div id="journalLines">
+        <!-- Lines will be loaded dynamically -->
+      </div>
+      
+      <button type="button" id="addLineBtn" class="add-line-btn">+ Add Line</button>
+      
+      <div class="totals-row">
+        <div class="totals-label">Totals:</div>
+        <div class="total-debit" id="totalDebit">0.00</div>
+        <div class="total-credit" id="totalCredit">0.00</div>
+        <div class="balance-check" id="balanceCheck">Out of Balance</div>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submitBtn" disabled>Update Journal Entry</button>
+      <button type="button" class="delete-btn" id="deleteBtn">Delete Journal Entry</button>
+    </form>
+
+    <div id="message"></div>
+  </div>
+
+<script>
+  // Load Google credentials from server config
+let GOOGLE_API_KEY = null;
+let GOOGLE_CLIENT_ID = null;
+const apiUrl = window.location.hostname === 'localhost' ? "http://localhost:4000" : "";
+let accounts = [];
+let lineCounter = 0;
+let currentEntryId = null;
+
+async function loadConfig() {
+  try {
+    const response = await fetch('/api/config');
+    const config = await response.json();
+    GOOGLE_API_KEY = config.googleApiKey;
+    GOOGLE_CLIENT_ID = config.googleClientId;
+  } catch (error) {
+    console.error('Failed to load Google credentials:', error);
+  }
+}
+
+async function loadAccounts() {
+  const res = await fetch(`${apiUrl}/accounts`);
+  accounts = await res.json();
+}
+
+function createAccountOptions() {
+  let options = '<option value="">Select account...</option>';
+  accounts.forEach(acc => {
+    options += `<option value="${acc.number}">${acc.number} - ${acc.name}</option>`;
+  });
+  return options;
+}
+
+function addJournalLine(accountNo = '', debit = '', credit = '') {
+  lineCounter++;
+  const linesContainer = document.getElementById('journalLines');
+  
+  const lineDiv = document.createElement('div');
+  lineDiv.className = 'journal-line';
+  lineDiv.id = `line-${lineCounter}`;
+  
+  lineDiv.innerHTML = `
+    <select class="line-account" data-line="${lineCounter}" required>
+      ${createAccountOptions()}
+    </select>
+    <input type="number" class="line-debit" data-line="${lineCounter}" step="0.01" placeholder="0.00" value="${debit}">
+    <input type="number" class="line-credit" data-line="${lineCounter}" step="0.01" placeholder="0.00" value="${credit}">
+    <button type="button" class="remove-line-btn" onclick="removeLine(${lineCounter})">Remove</button>
+  `;
+  
+  linesContainer.appendChild(lineDiv);
+  
+  // Set selected account
+  if (accountNo) {
+    lineDiv.querySelector('.line-account').value = accountNo;
+  }
+  
+  // Add event listeners for amount inputs
+  const debitInput = lineDiv.querySelector('.line-debit');
+  const creditInput = lineDiv.querySelector('.line-credit');
+  
+  debitInput.addEventListener('input', () => {
+    if (debitInput.value) creditInput.value = '';
+    updateTotals();
+  });
+  
+  creditInput.addEventListener('input', () => {
+    if (creditInput.value) debitInput.value = '';
+    updateTotals();
+  });
+}
+
+function removeLine(lineId) {
+  const lineElement = document.getElementById(`line-${lineId}`);
+  if (lineElement) {
+    lineElement.remove();
+    updateTotals();
+  }
+}
+
+function updateTotals() {
+  let totalDebit = 0;
+  let totalCredit = 0;
+  
+  document.querySelectorAll('.line-debit').forEach(input => {
+    if (input.value) totalDebit += parseFloat(input.value);
+  });
+  
+  document.querySelectorAll('.line-credit').forEach(input => {
+    if (input.value) totalCredit += parseFloat(input.value);
+  });
+  
+  document.getElementById('totalDebit').textContent = totalDebit.toFixed(2);
+  document.getElementById('totalCredit').textContent = totalCredit.toFixed(2);
+  
+  const balanceCheck = document.getElementById('balanceCheck');
+  const submitBtn = document.getElementById('submitBtn');
+  
+  if (Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0) {
+    balanceCheck.textContent = 'In Balance';
+    balanceCheck.className = 'balance-check in-balance';
+    submitBtn.disabled = false;
+  } else {
+    balanceCheck.textContent = 'Out of Balance';
+    balanceCheck.className = 'balance-check out-of-balance';
+    submitBtn.disabled = true;
+  }
+}
+
+async function loadJournalEntry() {
+  const urlParams = new URLSearchParams(window.location.search);
+  currentEntryId = urlParams.get('id');
+  
+  if (!currentEntryId) {
+    document.getElementById('loading').innerHTML = 'No journal entry ID provided.';
+    return;
+  }
+  
+  try {
+    await loadAccounts();
+    
+    const response = await fetch(`${apiUrl}/journal/${currentEntryId}`);
+    if (!response.ok) {
+      throw new Error('Journal entry not found');
+    }
+    
+    const entry = await response.json();
+    
+    // Populate form fields
+    document.getElementById('date').value = entry.date.split('T')[0];
+    document.getElementById('description').value = entry.description;
+    
+    // Load existing attachments
+    const attachmentsContainer = document.getElementById('attachments-container');
+    attachmentsContainer.innerHTML = '';
+    if (entry.attachments && entry.attachments.length > 0) {
+      entry.attachments.forEach(attachment => {
+        addAttachment(attachment.type, attachment.name, attachment.url);
+      });
+    }
+    
+    // Clear existing lines and add entry lines
+    document.getElementById('journalLines').innerHTML = '';
+    lineCounter = 0;
+    
+    entry.lines.forEach(line => {
+      addJournalLine(line.account_no, line.debit || '', line.credit || '');
+    });
+    
+    updateTotals();
+    
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('journalForm').style.display = 'block';
+    
+  } catch (error) {
+    console.error('Error loading journal entry:', error);
+    document.getElementById('loading').innerHTML = 'Error loading journal entry. Please try again.';
+  }
+}
+
+// Add attachment functionality
+function addAttachment(type = 'receipt', name = '', url = '') {
+  const container = document.getElementById('attachments-container');
+  const newRow = document.createElement('div');
+  newRow.className = 'attachment-row';
+  newRow.innerHTML = `
+    <select class="attachment-type">
+      <option value="receipt" ${type === 'receipt' ? 'selected' : ''}>Receipt</option>
+      <option value="check" ${type === 'check' ? 'selected' : ''}>Check</option>
+      <option value="deposit_slip" ${type === 'deposit_slip' ? 'selected' : ''}>Deposit Slip</option>
+      <option value="other" ${type === 'other' ? 'selected' : ''}>Other</option>
+    </select>
+    <input type="text" class="attachment-name" placeholder="Description (e.g., 'Office supplies receipt')" value="${name}">
+    <div class="attachment-url-container">
+      <input type="url" class="attachment-url" placeholder="Google Drive link" value="${url}">
+      <button type="button" class="browse-drive-btn" onclick="openDrivePicker(this)">Browse Drive</button>
+    </div>
+    <button type="button" class="remove-attachment-btn" onclick="removeAttachment(this)">Remove</button>
+  `;
+  container.appendChild(newRow);
+}
+
+function removeAttachment(button) {
+  button.parentElement.remove();
+}
+
+document.getElementById('addAttachmentBtn').addEventListener('click', () => addAttachment());
+document.getElementById('addLineBtn').addEventListener('click', () => addJournalLine());
+
+// Google Drive Picker Configuration (using the keys defined above)
+let pickerApiLoaded = false;
+let oauthToken = null;
+
+// Load Google APIs
+function loadGoogleAPIs() {
+  console.log('Starting Google API initialization...');
+  
+  gapi.load('picker', {
+    callback: () => {
+      console.log('Google Picker API loaded');
+      pickerApiLoaded = true;
+      console.log('Google APIs ready');
+    },
+    onerror: () => {
+      console.error('Failed to load Google APIs');
+      alert('Failed to load Google APIs. Please check your internet connection and try refreshing the page.');
+    }
+  });
+}
+
+function openDrivePicker(button) {
+  // Get the URL input field for this attachment row
+  const urlInput = button.parentElement.querySelector('.attachment-url');
+  
+  if (!pickerApiLoaded) {
+    alert('Google Picker API is still loading. Please try again in a moment.');
+    return;
+  }
+
+  // Use Google Identity Services for authentication
+  google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/drive.readonly',
+    callback: (response) => {
+      if (response.access_token) {
+        oauthToken = response.access_token;
+        createPicker(urlInput);
+      } else {
+        console.error('Failed to get access token');
+        alert('Google Drive authentication failed. Please try again.');
+      }
+    },
+  }).requestAccessToken();
+}
+
+function createPicker(urlInput) {
+  // Create multiple views for better navigation
+  const docsView = new google.picker.DocsView(google.picker.ViewId.DOCS)
+    .setIncludeFolders(true)
+    .setSelectFolderEnabled(true);
+    
+  const imageView = new google.picker.DocsView(google.picker.ViewId.DOCS_IMAGES)
+    .setIncludeFolders(true);
+    
+  const pdfView = new google.picker.DocsView(google.picker.ViewId.PDFS)
+    .setIncludeFolders(true);
+    
+  const recentView = new google.picker.DocsView(google.picker.ViewId.RECENTLY_PICKED)
+    .setIncludeFolders(true);
+
+  const pickerBuilder = new google.picker.PickerBuilder()
+    .addView(docsView)
+    .addView(imageView) 
+    .addView(pdfView)
+    .addView(recentView)
+    .setTitle('Select File or Folder from Google Drive')
+    .setSize(1051, 650)
+    .setDeveloperKey(GOOGLE_API_KEY)
+    .setCallback((data) => pickerCallback(data, urlInput));
+    
+  if (oauthToken) {
+    pickerBuilder.setOAuthToken(oauthToken);
+  }
+  
+  const picker = pickerBuilder.build();
+  picker.setVisible(true);
+}
+
+function pickerCallback(data, urlInput) {
+  if (data[google.picker.Response.ACTION] == google.picker.Action.PICKED) {
+    const doc = data[google.picker.Response.DOCUMENTS][0];
+    const fileId = doc[google.picker.Document.ID];
+    const fileName = doc[google.picker.Document.NAME];
+    
+    // Create shareable link
+    const shareableUrl = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
+    
+    // Set the URL in the input field
+    urlInput.value = shareableUrl;
+    
+    // Auto-populate the name field if it's empty
+    const nameInput = urlInput.closest('.attachment-row').querySelector('.attachment-name');
+    if (!nameInput.value) {
+      nameInput.value = fileName;
+    }
+  }
+}
+
+// Initialize Google APIs when page loads
+window.addEventListener('load', () => {
+  // Add a small delay to ensure gapi is fully loaded
+  setTimeout(() => {
+    if (typeof gapi !== 'undefined') {
+      loadGoogleAPIs();
+    } else {
+      console.error('Google API (gapi) not found');
+      // Try again after a longer delay
+      setTimeout(() => {
+        if (typeof gapi !== 'undefined') {
+          loadGoogleAPIs();
+        } else {
+          console.error('Google API still not available after retry');
+        }
+      }, 2000);
+    }
+  }, 500);
+});
+
+document.getElementById("journalForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const messageDiv = document.getElementById("message");
+  
+  const date = document.getElementById("date").value;
+  const description = document.getElementById("description").value;
+  
+  // Collect attachments
+  const attachments = [];
+  document.querySelectorAll('.attachment-row').forEach(row => {
+    const type = row.querySelector('.attachment-type').value;
+    const name = row.querySelector('.attachment-name').value;
+    const url = row.querySelector('.attachment-url').value;
+    
+    if (name && url) {
+      attachments.push({ type, name, url });
+    }
+  });
+
+  // Collect all journal lines
+  const lines = [];
+  document.querySelectorAll('.journal-line').forEach(lineDiv => {
+    const account = lineDiv.querySelector('.line-account').value;
+    const debit = parseFloat(lineDiv.querySelector('.line-debit').value) || 0;
+    const credit = parseFloat(lineDiv.querySelector('.line-credit').value) || 0;
+    
+    if (account && (debit > 0 || credit > 0)) {
+      const accountData = accounts.find(acc => acc.number == account);
+      lines.push({
+        account_no: parseInt(account),
+        account_name: accountData ? accountData.name : '',
+        debit: debit,
+        credit: credit
+      });
+    }
+  });
+  
+  if (lines.length < 2) {
+    messageDiv.textContent = "Please add at least 2 journal lines.";
+    messageDiv.className = "error";
+    messageDiv.style.display = "block";
+    return;
+  }
+
+  const payload = {
+    date,
+    description,
+    attachments,
+    lines
+  };
+
+  try {
+    const res = await fetch(`${apiUrl}/journal/${currentEntryId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      messageDiv.textContent = "✅ Journal entry updated successfully!";
+      messageDiv.className = "success";
+      messageDiv.style.display = "block";
+      
+      // Hide message after 3 seconds and redirect
+      setTimeout(() => {
+        window.location.href = 'general-journal.html';
+      }, 2000);
+    } else {
+      const err = await res.json();
+      messageDiv.textContent = "❌ Error: " + err.error;
+      messageDiv.className = "error";
+      messageDiv.style.display = "block";
+    }
+  } catch (error) {
+    messageDiv.textContent = "❌ Network error. Please check your connection.";
+    messageDiv.className = "error";
+    messageDiv.style.display = "block";
+  }
+});
+
+document.getElementById("deleteBtn").addEventListener("click", async () => {
+  if (!confirm("Are you sure you want to delete this journal entry? This action cannot be undone.")) {
+    return;
+  }
+  
+  const messageDiv = document.getElementById("message");
+  
+  try {
+    const res = await fetch(`${apiUrl}/journal/${currentEntryId}`, {
+      method: "DELETE"
+    });
+
+    if (res.ok) {
+      messageDiv.textContent = "✅ Journal entry deleted successfully!";
+      messageDiv.className = "success";
+      messageDiv.style.display = "block";
+      
+      // Redirect after 2 seconds
+      setTimeout(() => {
+        window.location.href = 'general-journal.html';
+      }, 2000);
+    } else {
+      const err = await res.json();
+      messageDiv.textContent = "❌ Error: " + err.error;
+      messageDiv.className = "error";
+      messageDiv.style.display = "block";
+    }
+  } catch (error) {
+    messageDiv.textContent = "❌ Network error. Please check your connection.";
+    messageDiv.className = "error";
+    messageDiv.style.display = "block";
+  }
+});
+
+// Load journal entry when page loads
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadConfig();
+  loadJournalEntry();
+});
+</script>
+</body>
+</html>

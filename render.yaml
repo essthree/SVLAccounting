@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: accounting-app
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        fromService:
+          type: web
+          name: accounting-app
+          property: port

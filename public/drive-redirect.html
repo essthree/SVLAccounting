@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Redirecting to Google Drive...</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <div style="text-align: center; margin-top: 50px; font-family: Arial, sans-serif;">
+        <h2>Redirecting to Google Drive...</h2>
+        <p>If you are not redirected automatically, <a href="#" id="driveLink">click here</a>.</p>
+    </div>
+
+    <script>
+        // Get the drive URL from query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const driveUrl = urlParams.get('url');
+        
+        if (driveUrl) {
+            document.getElementById('driveLink').href = driveUrl;
+            // Redirect immediately
+            window.location.href = driveUrl;
+        } else {
+            document.body.innerHTML = '<div style="text-align: center; margin-top: 50px; font-family: Arial, sans-serif;"><h2>Error: No Drive URL provided</h2></div>';
+        }
+    </script>
+</body>
+</html>

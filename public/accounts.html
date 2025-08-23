@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chart of Accounts</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }
+    h2 { font-size: 16px; }
+    nav ul { list-style: none; padding: 0; margin-bottom: 20px; font-size: 11px; }
+    nav li { display: inline; margin-right: 15px; }
+    nav a { text-decoration: none; color: #007bff; }
+    nav a:hover { text-decoration: underline; }
+    nav a.current { background-color: #007bff; color: white; padding: 4px 8px; border-radius: 4px; }
+    
+    .container { max-width: 1200px; width: fit-content; margin: 0 auto; }
+    .add-account-section { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+    .form-row { display: grid; grid-template-columns: 1fr 2fr 3fr 1fr 120px; gap: 10px; align-items: end; margin-bottom: 15px; }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label { font-weight: 600; margin-bottom: 5px; color: #495057; font-size: 11px; }
+    .form-group input, .form-group select { padding: 8px; border: 2px solid #e9ecef; border-radius: 4px; font-size: 11px; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: #007bff; }
+    
+    .add-btn { background-color: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+    .add-btn:hover { background-color: #218838; }
+    .add-btn:disabled { background-color: #6c757d; cursor: not-allowed; }
+    
+    .accounts-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .accounts-table th, .accounts-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    .accounts-table th { background-color: #e9ecef; font-size: 10px; font-weight: bold; }
+    
+    .edit-btn, .delete-btn { border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 9px; margin-right: 5px; }
+    .edit-btn { background-color: #007bff; color: white; }
+    .edit-btn:hover { background-color: #0056b3; }
+    .delete-btn { background-color: #dc3545; color: white; }
+    .delete-btn:hover { background-color: #c82333; }
+    
+    .loading { text-align: center; padding: 20px; color: #6c757d; font-size: 12px; }
+    
+    #message { margin-top: 15px; padding: 10px; border-radius: 4px; font-weight: 500; text-align: center; display: none; }
+    .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    
+    .edit-row { background-color: #fff3cd; }
+    .edit-row input { background-color: white; }
+  </style>
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="index.html">Journal Entry</a></li>
+      <li><a href="accounts.html" class="current">Chart of Accounts</a></li>
+      <li><a href="general-journal.html">General Journal</a></li>
+      <li><a href="account-ledger.html">Account Ledger</a></li>
+    </ul>
+  </nav>
+  
+  <div class="container">
+    <h2>Chart of Accounts</h2>
+    
+    <div class="add-account-section">
+      <h3 style="margin-top: 0; font-size: 14px;">Add New Account</h3>
+      <form id="addAccountForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="accountNumber">Number</label>
+            <input type="number" id="accountNumber" required>
+          </div>
+          <div class="form-group">
+            <label for="accountName">Name</label>
+            <input type="text" id="accountName" required>
+          </div>
+          <div class="form-group">
+            <label for="accountDescription">Description</label>
+            <input type="text" id="accountDescription">
+          </div>
+          <div class="form-group">
+            <label for="accountType">Type</label>
+            <select id="accountType" required>
+              <option value="">Select...</option>
+              <option value="Asset">Asset</option>
+              <option value="Liability">Liability</option>
+              <option value="Equity">Equity</option>
+              <option value="Revenue">Revenue</option>
+              <option value="Expense">Expense</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <button type="submit" class="add-btn">Add Account</button>
+          </div>
+        </div>
+      </form>
+    </div>
+    
+    <div id="loading" class="loading">Loading accounts...</div>
+    
+    <table class="accounts-table" id="accountsTable" style="display: none;">
+      <thead>
+        <tr>
+          <th>Number</th>
+          <th>Name</th>
+          <th>Description</th>
+          <th>Type</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="accountsBody"></tbody>
+    </table>
+    
+    <div id="message"></div>
+  </div>
+
+  <script>
+    const apiUrl = window.location.hostname === 'localhost' ? "http://localhost:4000" : "";
+    let accounts = [];
+    let editingAccountId = null;
+
+    async function loadAccounts() {
+      try {
+        const response = await fetch(`${apiUrl}/accounts`);
+        accounts = await response.json();
+        renderAccounts();
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('accountsTable').style.display = 'table';
+      } catch (error) {
+        console.error('Error loading accounts:', error);
+        document.getElementById('loading').innerHTML = 'Error loading accounts. Please try again.';
+      }
+    }
+
+    function renderAccounts() {
+      const tbody = document.getElementById('accountsBody');
+      tbody.innerHTML = '';
+      
+      accounts.forEach(account => {
+        const row = document.createElement('tr');
+        if (editingAccountId === account._id) {
+          row.className = 'edit-row';
+          row.innerHTML = `
+            <td><input type="number" value="${account.number}" id="edit-number-${account._id}" style="width: 80px;"></td>
+            <td><input type="text" value="${account.name}" id="edit-name-${account._id}"></td>
+            <td><input type="text" value="${account.description || ''}" id="edit-description-${account._id}"></td>
+            <td>
+              <select id="edit-type-${account._id}">
+                <option value="Asset" ${account.type === 'Asset' ? 'selected' : ''}>Asset</option>
+                <option value="Liability" ${account.type === 'Liability' ? 'selected' : ''}>Liability</option>
+                <option value="Equity" ${account.type === 'Equity' ? 'selected' : ''}>Equity</option>
+                <option value="Revenue" ${account.type === 'Revenue' ? 'selected' : ''}>Revenue</option>
+                <option value="Expense" ${account.type === 'Expense' ? 'selected' : ''}>Expense</option>
+              </select>
+            </td>
+            <td>
+              <button class="edit-btn" onclick="saveAccount('${account._id}')">Save</button>
+              <button class="delete-btn" onclick="cancelEdit()">Cancel</button>
+            </td>
+          `;
+        } else {
+          row.innerHTML = `
+            <td>${account.number}</td>
+            <td>${account.name}</td>
+            <td>${account.description || ''}</td>
+            <td>${account.type}</td>
+            <td>
+              <button class="edit-btn" onclick="editAccount('${account._id}')">Edit</button>
+              <button class="delete-btn" onclick="deleteAccount('${account._id}')">Delete</button>
+            </td>
+          `;
+        }
+        tbody.appendChild(row);
+      });
+    }
+
+    function editAccount(accountId) {
+      editingAccountId = accountId;
+      renderAccounts();
+    }
+
+    function cancelEdit() {
+      editingAccountId = null;
+      renderAccounts();
+    }
+
+    async function saveAccount(accountId) {
+      const number = document.getElementById(`edit-number-${accountId}`).value;
+      const name = document.getElementById(`edit-name-${accountId}`).value;
+      const description = document.getElementById(`edit-description-${accountId}`).value;
+      const type = document.getElementById(`edit-type-${accountId}`).value;
+
+      if (!number || !name || !type) {
+        showMessage('Please fill in all required fields.', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${apiUrl}/accounts/${accountId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ number: parseInt(number), name, description, type })
+        });
+
+        if (response.ok) {
+          showMessage('Account updated successfully!', 'success');
+          editingAccountId = null;
+          await loadAccounts();
+        } else {
+          const error = await response.json();
+          showMessage('Error: ' + error.error, 'error');
+        }
+      } catch (error) {
+        showMessage('Network error. Please try again.', 'error');
+      }
+    }
+
+    async function deleteAccount(accountId) {
+      if (!confirm('Are you sure you want to delete this account? This action cannot be undone.')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${apiUrl}/accounts/${accountId}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          showMessage('Account deleted successfully!', 'success');
+          await loadAccounts();
+        } else {
+          const error = await response.json();
+          showMessage('Error: ' + error.error, 'error');
+        }
+      } catch (error) {
+        showMessage('Network error. Please try again.', 'error');
+      }
+    }
+
+    document.getElementById('addAccountForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const number = document.getElementById('accountNumber').value;
+      const name = document.getElementById('accountName').value;
+      const description = document.getElementById('accountDescription').value;
+      const type = document.getElementById('accountType').value;
+
+      if (!number || !name || !type) {
+        showMessage('Please fill in all required fields.', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${apiUrl}/accounts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            number: parseInt(number), 
+            name, 
+            description, 
+            type 
+          })
+        });
+
+        if (response.ok) {
+          showMessage('Account added successfully!', 'success');
+          document.getElementById('addAccountForm').reset();
+          await loadAccounts();
+        } else {
+          const error = await response.json();
+          showMessage('Error: ' + error.error, 'error');
+        }
+      } catch (error) {
+        showMessage('Network error. Please try again.', 'error');
+      }
+    });
+
+    function showMessage(text, type) {
+      const messageDiv = document.getElementById('message');
+      messageDiv.textContent = text;
+      messageDiv.className = type;
+      messageDiv.style.display = 'block';
+      
+      setTimeout(() => {
+        messageDiv.style.display = 'none';
+      }, 3000);
+    }
+
+    // Load accounts when page loads
+    document.addEventListener('DOMContentLoaded', loadAccounts);
+  </script>
+</body>
+</html>
