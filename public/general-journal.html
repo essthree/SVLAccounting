@@ -359,7 +359,10 @@
         header.className = 'entry-header';
         const formattedDate = new Date(entry.date).toLocaleDateString();
         header.innerHTML = `
-          <h3>Entry #${entry.trans_id} - ${formattedDate}</h3>
+          <div>
+            <h3>${formattedDate}</h3>
+            ${entry.description ? `<div style="font-size: 13px; color: #333; margin-top: 3px; font-weight: 500;">${entry.description}</div>` : ''}
+          </div>
           <div class="entry-actions">
             ${entry.attachments && entry.attachments.length > 0 ? 
               `<button class="attachment-btn" onclick="toggleAttachments(${entry.trans_id})" title="View Attachments">📎</button>` : 
