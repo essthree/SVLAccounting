@@ -47,7 +47,7 @@
 <body>
   <nav>
     <ul>
-      <li><a href="index.html">Journal Entry</a></li>
+      <li><a href="new-entry.html">Journal Entry</a></li>
       <li><a href="accounts.html" class="current">Chart of Accounts</a></li>
       <li><a href="general-journal.html">General Journal</a></li>
       <li><a href="account-ledger.html">Account Ledger</a></li>
@@ -116,8 +116,8 @@
 
     async function loadAccounts() {
       try {
-        const response = await fetch(`${apiUrl}/accounts`);
-        accounts = await response.json();
+        const res = await fetch('/accounts', { credentials: 'include' });
+        accounts = await res.json();
         renderAccounts();
         document.getElementById('loading').style.display = 'none';
         document.getElementById('accountsTable').style.display = 'table';
@@ -191,18 +191,19 @@
       }
 
       try {
-        const response = await fetch(`${apiUrl}/accounts/${accountId}`, {
+        const res = await fetch(`/accounts/${accountId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ number: parseInt(number), name, description, type })
         });
 
-        if (response.ok) {
+        if (res.ok) {
           showMessage('Account updated successfully!', 'success');
           editingAccountId = null;
           await loadAccounts();
         } else {
-          const error = await response.json();
+          const error = await res.json();
           showMessage('Error: ' + error.error, 'error');
         }
       } catch (error) {
@@ -216,15 +217,16 @@
       }
 
       try {
-        const response = await fetch(`${apiUrl}/accounts/${accountId}`, {
-          method: 'DELETE'
+        const res = await fetch(`/accounts/${accountId}`, {
+          method: 'DELETE',
+          credentials: 'include'
         });
 
-        if (response.ok) {
+        if (res.ok) {
           showMessage('Account deleted successfully!', 'success');
           await loadAccounts();
         } else {
-          const error = await response.json();
+          const error = await res.json();
           showMessage('Error: ' + error.error, 'error');
         }
       } catch (error) {
@@ -249,6 +251,7 @@
         const response = await fetch(`${apiUrl}/accounts`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ 
             number: parseInt(number), 
             name, 

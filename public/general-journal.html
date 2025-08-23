@@ -260,8 +260,8 @@
 </head>
 <body>
   <nav>
+    <button onclick="window.location.href='new-entry.html'">+ New Journal Entry</button>
     <ul>
-      <li><a href="index.html">Journal Entry</a></li>
       <li><a href="accounts.html">Chart of Accounts</a></li>
       <li><a href="general-journal.html" class="current">General Journal</a></li>
       <li><a href="account-ledger.html">Account Ledger</a></li>
@@ -284,17 +284,14 @@
   <script>
     async function loadGeneralJournal() {
       try {
-        //console.log('Starting to load journal entries...');
         
-        const entriesResponse = await fetch('/journal');
-        //console.log('Entries response status:', entriesResponse.status);
+        const entriesResponse = await fetch('/journal', { credentials: 'include' });
         
         if (!entriesResponse.ok) {
           throw new Error(`Failed to fetch entries: ${entriesResponse.status} ${entriesResponse.statusText}`);
         }
         
-        const accountsResponse = await fetch('/accounts');
-        //console.log('Accounts response status:', accountsResponse.status);
+        const accountsResponse = await fetch('/accounts', { credentials: 'include' });
         
         if (!accountsResponse.ok) {
           throw new Error(`Failed to fetch accounts: ${accountsResponse.status} ${accountsResponse.statusText}`);
@@ -303,8 +300,6 @@
         const entries = await entriesResponse.json();
         const accounts = await accountsResponse.json();
         
-        //console.log('Loaded entries:', entries.length);
-        //console.log('Loaded accounts:', accounts.length);
         
         // Create account lookup map
         const accountMap = {};
@@ -315,7 +310,11 @@
         displayEntries(entries, accountMap);
       } catch (error) {
         console.error('Detailed error loading journal entries:', error);
-        document.getElementById('loading').innerHTML = `Error: ${error.message}. Check console for details.`;
+        if (error.message.includes('401') || error.message.includes('Authentication')) {
+          window.location.href = '/login.html';
+        } else {
+          document.getElementById('loading').innerHTML = `<div style="color: red;">Error loading journal entries: ${error.message}</div>`;
+        }
       }
     }
 
@@ -411,25 +410,32 @@
                 const fileExtension = attachment.name ? attachment.name.split('.').pop().toLowerCase() : '';
                 let fileIcon = '📄';
                 
-                if (attachment.url && attachment.url.includes('drive.google.com')) {
+                // Check if it's a folder first using mimeType
+                if (attachment.mimeType === "application/vnd.google-apps.folder") {
+                  fileIcon = '📁';
+                } else if (attachment.url && attachment.url.includes('drive.google.com')) {
+                  // For documents, use file extension to determine icon with better colors
                   if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileExtension)) {
                     fileIcon = '🖼️';
                   } else if (['pdf'].includes(fileExtension)) {
-                    fileIcon = '📄';
+                    fileIcon = '🔴'; // Red circle for PDF
                   } else if (['doc', 'docx'].includes(fileExtension)) {
-                    fileIcon = '📝';
+                    fileIcon = '🔵'; // Blue circle for Word docs
                   } else if (['xls', 'xlsx'].includes(fileExtension)) {
-                    fileIcon = '📊';
+                    fileIcon = '🟢'; // Green circle for Excel
+                  } else {
+                    fileIcon = '🟡'; // Yellow circle for other files
                   }
                 }
                 
+                const mimeType = attachment.mimeType || attachment.mime_type || '';
                 return `
-                  <div onclick="openAttachmentPreview('${attachment.url}', '${attachment.name}', '${fileExtension}')" 
+                  <div onclick="openAttachmentPreview('${attachment.url}', '${attachment.name}', '${fileExtension}', '${mimeType}')" 
                        style="cursor: pointer; padding: 8px; border-radius: 6px; background: #f8f9fa; border: 1px solid #e9ecef; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;"
                        onmouseover="this.style.background='#e9ecef'; this.style.borderColor='#007bff';"
                        onmouseout="this.style.background='#f8f9fa'; this.style.borderColor='#e9ecef';"
                        title="${attachment.name}">
-                    <span style="font-size: 16px;">${fileIcon}</span>
+                    <span style="font-size: 20px;">${fileIcon}</span>
                     <span style="font-size: 11px; color: #333; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${attachment.name}</span>
                   </div>
                 `;
@@ -448,13 +454,9 @@
       return match ? match[1] : null;
     }
     
-    function openAttachmentPreview(url, name, fileExtension) {
+    function openAttachmentPreview(url, name, fileExtension, mimeType) {
       // For Google Drive files, use redirect page to bypass TrustedScript issues
       if (url.includes('drive.google.com')) {
-        //console.log('=== GOOGLE DRIVE DEBUG ===');
-        //console.log('Original URL:', url);
-        //console.log('Name:', name);
-        //console.log('File Extension:', fileExtension);
         
         // Extract ID from various Google Drive URL formats
         let driveId = null;
@@ -467,18 +469,25 @@
           driveId = url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
         }
         
-        //console.log('Extracted Drive ID:', driveId);
         
         let finalUrl = url;
+        
+        // Use mimeType to determine proper URL format
         if (driveId) {
-          // For folders, construct proper folder URL
-          finalUrl = `https://drive.google.com/drive/folders/${driveId}`;
-          //console.log('Constructed folder URL:', finalUrl);
+          if (mimeType === "application/vnd.google-apps.folder") {
+            // For folders, ensure proper folder URL
+            finalUrl = `https://drive.google.com/drive/folders/${driveId}`;
+          } else {
+            // For documents, ensure proper file URL
+            if (!url.includes('/view') && !url.includes('/edit')) {
+              finalUrl = `https://drive.google.com/file/d/${driveId}/view`;
+            }
+          }
         }
+        
         
         // Use redirect page to bypass TrustedScript issues
         const redirectUrl = `/drive-redirect.html?url=${encodeURIComponent(finalUrl)}`;
-        //console.log('Using redirect URL:', redirectUrl);
         window.open(redirectUrl, '_blank');
         return;
       }
@@ -532,18 +541,12 @@
       }
     }
     
-    // Add sort direction change listener
-    document.getElementById('sortDirection').addEventListener('change', function() {
-      // Re-display entries with new sort order
-      const container = document.getElementById('journalContainer');
-      if (container.children.length > 0) {
-        // Only re-sort if entries are already loaded
-        loadGeneralJournal();
-      }
-    });
-    
-    // Load journal when page loads
+
+    // Load journal entries when page loads
     document.addEventListener('DOMContentLoaded', loadGeneralJournal);
+    
+    // Add event listener for sort direction change
+    document.getElementById('sortDirection').addEventListener('change', loadGeneralJournal);
   </script>
 </body>
 </html>

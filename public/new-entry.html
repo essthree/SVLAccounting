@@ -235,14 +235,13 @@
 
   .attachment-row {
     display: grid;
-    grid-template-columns: 120px 2fr 3fr 80px;
+    grid-template-columns: 120px 1fr;
     gap: 10px;
     margin-bottom: 10px;
     align-items: center;
   }
 
   .attachment-type,
-  .attachment-name,
   .attachment-url {
     padding: 8px;
     border: 1px solid #e9ecef;
@@ -255,9 +254,9 @@
     color: white;
     border: none;
     border-radius: 4px;
-    padding: 6px 10px;
+    padding: 8px 12px;
     cursor: pointer;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .browse-drive-btn {
@@ -280,6 +279,12 @@
     align-items: center;
     gap: 5px;
   }
+
+  .attachment-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
 </style>
   <!-- Google APIs -->
   <script src="https://apis.google.com/js/api.js"></script>
@@ -288,7 +293,7 @@
 <body>
   <nav>
     <ul>
-      <li><a href="index.html">Journal Entry</a></li>
+      <li><a href="new-entry.html">Journal Entry</a></li>
       <li><a href="accounts.html">Chart of Accounts</a></li>
       <li><a href="general-journal.html">Journal</a></li>
       <li><a href="account-ledger.html">Account Ledger</a></li>
@@ -309,21 +314,10 @@
       </div>
 
       <div class="form-group">
-        <label>Attachments (Google Drive Links)</label>
-        <div id="attachments-container">
-          <div class="attachment-row">
-            <select class="attachment-type">
-              <option value="receipt">Receipt</option>
-              <option value="check">Check</option>
-              <option value="deposit_slip">Deposit Slip</option>
-              <option value="other">Other</option>
-            </select>
-            <input type="text" class="attachment-name" placeholder="Description (e.g., 'Office supplies receipt')">
-            <input type="url" class="attachment-url" placeholder="Google Drive link">
-            <button type="button" class="remove-attachment-btn" onclick="removeAttachment(this)">Remove</button>
-          </div>
+        <div id="attachments-container" style="display: none;">
+          <label>Attachments (Google Drive Links)</label>
         </div>
-        <button type="button" id="addAttachmentBtn" style="margin-top: 10px; padding: 8px 12px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Add Attachment</button>
+        <button type="button" id="addAttachmentBtn" style="padding: 8px 12px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Add Attachment</button>
       </div>
 
       <div class="section-title">Journal Entry Lines</div>
@@ -496,20 +490,74 @@ document.getElementById("journalForm").addEventListener("submit", async e => {
   e.preventDefault();
   const messageDiv = document.getElementById("message");
   
+  // Clear any previous mimeType errors
+  window.mimeTypeError = null;
+  
   const date = document.getElementById("date").value;
   const description = document.getElementById("description").value;
   
-  // Collect attachments
+  // Collect attachments with mimeType from Google Drive API
   const attachments = [];
-  document.querySelectorAll('.attachment-row').forEach(row => {
+  const attachmentRows = document.querySelectorAll('.attachment-row');
+  
+  
+  
+  
+  for (const row of attachmentRows) {
     const type = row.querySelector('.attachment-type').value;
-    const name = row.querySelector('.attachment-name').value;
     const url = row.querySelector('.attachment-url').value;
     
-    if (name && url) {
-      attachments.push({ type, name, url });
+    if (url) {
+      let mimeType = '';
+      
+      // Extract Google Drive file ID and fetch mimeType
+      if (url.includes('drive.google.com')) {
+        const driveId = extractGoogleDriveId(url);
+        if (driveId) {
+          try {
+            // Check if gapi is loaded and auth is initialized
+            if (!window.gapi || !gapi.auth2) {
+              throw new Error('Google API not loaded');
+            }
+            
+            const authInstance = gapi.auth2.getAuthInstance();
+            if (!authInstance) {
+              throw new Error('Google Auth not initialized');
+            }
+            
+            const currentUser = authInstance.currentUser.get();
+            if (!currentUser.isSignedIn()) {
+              throw new Error('User not signed in to Google');
+            }
+            
+            const accessToken = currentUser.getAuthResponse().access_token;
+            if (!accessToken) {
+              throw new Error('No access token available');
+            }
+            
+            const response = await fetch(`${apiUrl}/api/drive-metadata/${driveId}?access_token=${accessToken}`);
+            if (response.ok) {
+              const metadata = await response.json();
+              mimeType = metadata.mimeType || '';
+            } else {
+              const errorText = await response.text();
+              throw new Error(`Drive API error: ${response.status} - ${errorText}`);
+            }
+          } catch (error) {
+            // Silently continue without mimeType on error
+          }
+        }
+      }
+      
+      // Get filename from picker data or use a default
+      const urlInput = row.querySelector('.attachment-url');
+      const name = urlInput.dataset.fileName || 'Google Drive File';
+      
+      attachments.push({ type, name, url, mimeType });
     }
-  });
+  }
+  
+
 
   // Collect all journal lines
   const lines = [];
@@ -543,13 +591,12 @@ document.getElementById("journalForm").addEventListener("submit", async e => {
     lines
   };
 
-  //console.log('Sending payload to server:', payload);
-  //console.log('Attachments being sent:', attachments);
 
   try {
     const res = await fetch(`${apiUrl}/journal`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify(payload)
     });
 
@@ -569,9 +616,11 @@ document.getElementById("journalForm").addEventListener("submit", async e => {
       setTimeout(() => {
         messageDiv.style.display = "none";
       }, 3000);
+    } else if (res.status === 401) {
+      window.location.href = '/login.html';
+      return;
     } else {
-      const err = await res.json();
-      messageDiv.textContent = "❌ Error: " + err.error;
+      messageDiv.textContent = "❌ Error saving journal entry.";
       messageDiv.className = "error";
       messageDiv.style.display = "block";
     }
@@ -581,6 +630,21 @@ document.getElementById("journalForm").addEventListener("submit", async e => {
     messageDiv.style.display = "block";
   }
 });
+
+// Extract Google Drive ID from various URL formats
+function extractGoogleDriveId(url) {
+  let driveId = null;
+  
+  if (url.includes('/folders/')) {
+    driveId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1];
+  } else if (url.includes('/file/d/')) {
+    driveId = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+  } else if (url.includes('/open?id=')) {
+    driveId = url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
+  }
+  
+  return driveId;
+}
 
 // Add attachment functionality
 function addAttachment() {
@@ -594,12 +658,11 @@ function addAttachment() {
       <option value="deposit_slip">Deposit Slip</option>
       <option value="other">Other</option>
     </select>
-    <input type="text" class="attachment-name" placeholder="Description (e.g., 'Office supplies receipt')">
-    <div class="attachment-url-container">
+    <div class="attachment-controls">
       <input type="url" class="attachment-url" placeholder="Google Drive link">
       <button type="button" class="browse-drive-btn" onclick="openDrivePicker(this)">Browse Drive</button>
+      <button type="button" class="remove-attachment-btn" onclick="removeAttachment(this)">Remove</button>
     </div>
-    <button type="button" class="remove-attachment-btn" onclick="removeAttachment(this)">Remove</button>
   `;
   container.appendChild(newRow);
 }
@@ -608,7 +671,14 @@ function removeAttachment(button) {
   button.parentElement.remove();
 }
 
-document.getElementById('addAttachmentBtn').addEventListener('click', addAttachment);
+document.getElementById('addAttachmentBtn').addEventListener('click', () => {
+  // Show the attachments container when first attachment is added
+  const container = document.getElementById('attachments-container');
+  if (container.style.display === 'none') {
+    container.style.display = 'block';
+  }
+  addAttachment();
+});
 
 // Google Drive Picker Configuration - loaded from server
 let GOOGLE_API_KEY = null;
@@ -619,7 +689,7 @@ let oauthToken = null;
 
 async function loadConfig() {
   try {
-    const response = await fetch('/api/config');
+    const response = await fetch('/api/config', { credentials: 'include' });
     const config = await response.json();
     GOOGLE_API_KEY = config.googleApiKey;
     GOOGLE_CLIENT_ID = config.googleClientId;
@@ -630,13 +700,10 @@ async function loadConfig() {
 
 // Load Google APIs
 function loadGoogleAPIs() {
-  //console.log('Starting Google API initialization...');
   
   gapi.load('picker', {
     callback: () => {
-      //console.log('Google Picker API loaded');
       pickerApiLoaded = true;
-      //console.log('Google APIs ready');
     },
     onerror: () => {
       console.error('Failed to load Google APIs');
@@ -715,11 +782,8 @@ function pickerCallback(data, urlInput) {
     // Set the URL in the input field
     urlInput.value = shareableUrl;
     
-    // Auto-populate the name field if it's empty
-    const nameInput = urlInput.closest('.attachment-row').querySelector('.attachment-name');
-    if (!nameInput.value) {
-      nameInput.value = fileName;
-    }
+    // Store filename in the URL input's data attribute for later use
+    urlInput.dataset.fileName = fileName;
   }
 }
 
