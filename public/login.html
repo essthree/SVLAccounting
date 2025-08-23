@@ -97,15 +97,45 @@
     
     <div id="loading" class="loading">Signing you in...</div>
     <div id="error" class="error"></div>
+    
+    <!-- Persistent debug area -->
+    <div id="debugArea" style="position: fixed; bottom: 10px; left: 10px; right: 10px; background: #f0f0f0; border: 2px solid #333; padding: 10px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; z-index: 10000; display: none;">
+      <div style="font-weight: bold; margin-bottom: 5px;">Debug Log:</div>
+      <div id="debugContent"></div>
+      <button onclick="document.getElementById('debugArea').style.display='none'" style="position: absolute; top: 5px; right: 5px;">×</button>
+    </div>
   </div>
 
   <script>
     let GOOGLE_CLIENT_ID = null;
     
+    // Debug logging function
+    function addDebugLog(message, data = null) {
+      const timestamp = new Date().toLocaleTimeString();
+      const debugArea = document.getElementById('debugArea');
+      const debugContent = document.getElementById('debugContent');
+      
+      const logEntry = document.createElement('div');
+      logEntry.style.marginBottom = '5px';
+      logEntry.style.borderBottom = '1px solid #ccc';
+      logEntry.style.paddingBottom = '3px';
+      
+      logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+      if (data) {
+        logEntry.innerHTML += `<br><pre style="margin: 2px 0; font-size: 10px;">${JSON.stringify(data, null, 2)}</pre>`;
+      }
+      
+      debugContent.appendChild(logEntry);
+      debugArea.style.display = 'block';
+      debugContent.scrollTop = debugContent.scrollHeight;
+      
+      console.log(`[${timestamp}] ${message}`, data);
+    }
+    
     // Global error handler to catch all errors
     window.addEventListener('error', (event) => {
       const errorMsg = `Global error: ${event.error?.message || event.message}`;
-      console.error('=== GLOBAL ERROR ===', event.error);
+      addDebugLog('GLOBAL ERROR', { error: errorMsg, stack: event.error?.stack });
       localStorage.setItem('lastGlobalError', JSON.stringify({
         timestamp: new Date().toISOString(),
         error: errorMsg,
@@ -116,7 +146,7 @@
     // Unhandled promise rejection handler
     window.addEventListener('unhandledrejection', (event) => {
       const errorMsg = `Unhandled promise rejection: ${event.reason}`;
-      console.error('=== UNHANDLED REJECTION ===', event.reason);
+      addDebugLog('PROMISE REJECTION', { error: errorMsg });
       localStorage.setItem('lastPromiseError', JSON.stringify({
         timestamp: new Date().toISOString(),
         error: errorMsg
@@ -237,8 +267,8 @@
     }
     
     function handleCredentialResponse(response) {
-      console.log('=== LOGIN DEBUG START ===');
-      console.log('Google credential response:', response);
+      addDebugLog('LOGIN ATTEMPT STARTED');
+      addDebugLog('Google credential response', response);
       showLoading(true);
       
       // Send the ID token to your server
@@ -253,29 +283,31 @@
         })
       })
       .then(res => {
-        console.log('Server response status:', res.status);
-        console.log('Server response headers:', res.headers);
+        addDebugLog('Server response received', { status: res.status, ok: res.ok });
         return res.json();
       })
       .then(data => {
-        console.log('Server response data:', data);
+        addDebugLog('Server response data', data);
         if (data.success) {
-          console.log('Login successful, redirecting...');
-          // Redirect to main app
-          window.location.href = '/';
+          addDebugLog('Login successful - STOPPING REDIRECT for debugging');
+          showError('Login successful! (Redirect disabled for debugging)');
+          // TEMPORARILY DISABLE REDIRECT FOR DEBUGGING
+          // window.location.href = '/';
         } else {
-          console.error('Login failed:', data.error);
+          addDebugLog('Login failed', { error: data.error });
           showError(data.error || 'Login failed');
         }
       })
       .catch(error => {
-        console.error('Login network error:', error);
-        console.error('Error stack:', error.stack);
+        addDebugLog('Network error during login', { 
+          message: error.message, 
+          stack: error.stack 
+        });
         showError('Network error during login: ' + error.message);
       })
       .finally(() => {
         showLoading(false);
-        console.log('=== LOGIN DEBUG END ===');
+        addDebugLog('LOGIN ATTEMPT FINISHED');
       });
     }
     
