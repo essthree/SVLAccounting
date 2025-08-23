@@ -289,11 +289,11 @@
       .then(data => {
         addDebugLog('Server response data', data);
         if (data.success) {
-          addDebugLog('Login successful - redirecting to main app');
+          addDebugLog('Login successful - redirecting to general journal');
           showError('Login successful! Redirecting...');
-          // Redirect to main app
+          // Redirect directly to general journal
           setTimeout(() => {
-            window.location.href = '/';
+            window.location.href = '/general-journal.html';
           }, 1000);
         } else {
           addDebugLog('Login failed', { error: data.error });
