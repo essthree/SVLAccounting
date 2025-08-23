@@ -102,23 +102,98 @@
   <script>
     let GOOGLE_CLIENT_ID = null;
     
+    // Global error handler to catch all errors
+    window.addEventListener('error', (event) => {
+      const errorMsg = `Global error: ${event.error?.message || event.message}`;
+      console.error('=== GLOBAL ERROR ===', event.error);
+      localStorage.setItem('lastGlobalError', JSON.stringify({
+        timestamp: new Date().toISOString(),
+        error: errorMsg,
+        stack: event.error?.stack
+      }));
+    });
+    
+    // Unhandled promise rejection handler
+    window.addEventListener('unhandledrejection', (event) => {
+      const errorMsg = `Unhandled promise rejection: ${event.reason}`;
+      console.error('=== UNHANDLED REJECTION ===', event.reason);
+      localStorage.setItem('lastPromiseError', JSON.stringify({
+        timestamp: new Date().toISOString(),
+        error: errorMsg
+      }));
+    });
+    
     // Initialize Google Sign-In
     window.addEventListener('load', () => {
+      // Show any previous errors for debugging
+      const lastError = localStorage.getItem('lastLoginError');
+      const lastGlobalError = localStorage.getItem('lastGlobalError');
+      const lastPromiseError = localStorage.getItem('lastPromiseError');
+      
+      if (lastError) {
+        const errorData = JSON.parse(lastError);
+        console.log('Previous login error:', errorData);
+      }
+      if (lastGlobalError) {
+        const errorData = JSON.parse(lastGlobalError);
+        console.log('Previous global error:', errorData);
+      }
+      if (lastPromiseError) {
+        const errorData = JSON.parse(lastPromiseError);
+        console.log('Previous promise error:', errorData);
+      }
+      
+      // Add debug button to view all stored errors
+      const debugBtn = document.createElement('button');
+      debugBtn.textContent = 'Show Debug Info';
+      debugBtn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9999;padding:5px;';
+      debugBtn.onclick = () => {
+        const allErrors = {
+          loginError: lastError ? JSON.parse(lastError) : null,
+          globalError: lastGlobalError ? JSON.parse(lastGlobalError) : null,
+          promiseError: lastPromiseError ? JSON.parse(lastPromiseError) : null
+        };
+        console.log('=== ALL DEBUG INFO ===', allErrors);
+        alert('Debug info logged to console. Check F12 > Console tab.');
+      };
+      document.body.appendChild(debugBtn);
+      
       loadGoogleConfig();
     });
     
     async function loadGoogleConfig() {
       try {
+        console.log('=== CONFIG DEBUG START ===');
+        console.log('Fetching config from:', '/api/config');
+        
         const response = await fetch('/api/config');
+        console.log('Config response status:', response.status);
+        console.log('Config response ok:', response.ok);
+        
+        if (!response.ok) {
+          throw new Error(`Config fetch failed: ${response.status} ${response.statusText}`);
+        }
+        
         const config = await response.json();
+        console.log('Config received:', config);
+        
         GOOGLE_CLIENT_ID = config.googleClientId;
+        console.log('Google Client ID set:', GOOGLE_CLIENT_ID);
+        
+        if (!GOOGLE_CLIENT_ID) {
+          throw new Error('Google Client ID not found in config');
+        }
         
         // Initialize with render method instead of prompt
         google.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
           callback: handleCredentialResponse,
           auto_select: false,
-          cancel_on_tap_outside: false
+          cancel_on_tap_outside: false,
+          error_callback: (error) => {
+            console.error('Google Sign-In initialization error:', error);
+            showError(`Google Sign-In error: ${error.type || error.message || 'Unknown error'}`);
+          }
         });
         
         // Create a container for the Google button
@@ -133,25 +208,37 @@
         customButton.parentNode.insertBefore(buttonContainer, customButton.nextSibling);
         
         // Render the Google button in the container
-        google.accounts.id.renderButton(
-          buttonContainer,
-          { 
-            theme: 'outline', 
-            size: 'large',
-            width: 250,
-            text: 'signin_with'
-          }
-        );
+        try {
+          google.accounts.id.renderButton(
+            buttonContainer,
+            { 
+              theme: 'outline', 
+              size: 'large',
+              width: 250,
+              text: 'signin_with'
+            }
+          );
+        } catch (renderError) {
+          console.error('Google button render error:', renderError);
+          showError(`Button render failed: ${renderError.message}`);
+        }
         
         // Hide our custom button
         customButton.style.display = 'none';
         
+        console.log('=== CONFIG DEBUG END ===');
+        
       } catch (error) {
-        showError('Failed to load Google configuration');
+        console.error('=== CONFIG ERROR ===');
+        console.error('Config load error:', error);
+        console.error('Error stack:', error.stack);
+        showError('Failed to load Google configuration: ' + error.message);
       }
     }
     
     function handleCredentialResponse(response) {
+      console.log('=== LOGIN DEBUG START ===');
+      console.log('Google credential response:', response);
       showLoading(true);
       
       // Send the ID token to your server
@@ -165,20 +252,30 @@
           token: response.credential
         })
       })
-      .then(res => res.json())
+      .then(res => {
+        console.log('Server response status:', res.status);
+        console.log('Server response headers:', res.headers);
+        return res.json();
+      })
       .then(data => {
+        console.log('Server response data:', data);
         if (data.success) {
+          console.log('Login successful, redirecting...');
           // Redirect to main app
           window.location.href = '/';
         } else {
+          console.error('Login failed:', data.error);
           showError(data.error || 'Login failed');
         }
       })
       .catch(error => {
-        showError('Network error during login');
+        console.error('Login network error:', error);
+        console.error('Error stack:', error.stack);
+        showError('Network error during login: ' + error.message);
       })
       .finally(() => {
         showLoading(false);
+        console.log('=== LOGIN DEBUG END ===');
       });
     }
     
@@ -190,19 +287,35 @@
       const errorDiv = document.getElementById('error');
       errorDiv.textContent = message;
       errorDiv.style.display = 'block';
+      
+      // Also log to console with timestamp for persistence
+      const timestamp = new Date().toISOString();
+      console.error(`[${timestamp}] LOGIN ERROR:`, message);
+      
+      // Store error in localStorage for debugging
+      localStorage.setItem('lastLoginError', JSON.stringify({
+        timestamp,
+        error: message
+      }));
     }
     
-    // Check if already logged in
-    fetch('/auth/status', { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => {
-        if (data.authenticated) {
-          window.location.href = '/';
-        }
-      })
-      .catch(() => {
-        // Not logged in, stay on login page
-      });
+    // Clear any existing session first
+    fetch('/auth/logout', { 
+      method: 'POST',
+      credentials: 'include' 
+    }).finally(() => {
+      // Check if already logged in
+      fetch('/auth/status', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.authenticated) {
+            window.location.href = '/';
+          }
+        })
+        .catch(() => {
+          // Not logged in, stay on login page
+        });
+    });
   </script>
 </body>
 </html>
