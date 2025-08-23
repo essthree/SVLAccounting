@@ -98,117 +98,27 @@
     <div id="loading" class="loading">Signing you in...</div>
     <div id="error" class="error"></div>
     
-    <!-- Persistent debug area -->
-    <div id="debugArea" style="position: fixed; bottom: 10px; left: 10px; right: 10px; background: #f0f0f0; border: 2px solid #333; padding: 10px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; z-index: 10000; display: none;">
-      <div style="font-weight: bold; margin-bottom: 5px;">Debug Log:</div>
-      <div id="debugContent"></div>
-      <button onclick="document.getElementById('debugArea').style.display='none'" style="position: absolute; top: 5px; right: 5px;">×</button>
-    </div>
   </div>
 
   <script>
     let GOOGLE_CLIENT_ID = null;
     
-    // Debug logging function
-    function addDebugLog(message, data = null) {
-      const timestamp = new Date().toLocaleTimeString();
-      const debugArea = document.getElementById('debugArea');
-      const debugContent = document.getElementById('debugContent');
-      
-      const logEntry = document.createElement('div');
-      logEntry.style.marginBottom = '5px';
-      logEntry.style.borderBottom = '1px solid #ccc';
-      logEntry.style.paddingBottom = '3px';
-      
-      logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
-      if (data) {
-        logEntry.innerHTML += `<br><pre style="margin: 2px 0; font-size: 10px;">${JSON.stringify(data, null, 2)}</pre>`;
-      }
-      
-      debugContent.appendChild(logEntry);
-      debugArea.style.display = 'block';
-      debugContent.scrollTop = debugContent.scrollHeight;
-      
-      console.log(`[${timestamp}] ${message}`, data);
-    }
-    
-    // Global error handler to catch all errors
-    window.addEventListener('error', (event) => {
-      const errorMsg = `Global error: ${event.error?.message || event.message}`;
-      addDebugLog('GLOBAL ERROR', { error: errorMsg, stack: event.error?.stack });
-      localStorage.setItem('lastGlobalError', JSON.stringify({
-        timestamp: new Date().toISOString(),
-        error: errorMsg,
-        stack: event.error?.stack
-      }));
-    });
-    
-    // Unhandled promise rejection handler
-    window.addEventListener('unhandledrejection', (event) => {
-      const errorMsg = `Unhandled promise rejection: ${event.reason}`;
-      addDebugLog('PROMISE REJECTION', { error: errorMsg });
-      localStorage.setItem('lastPromiseError', JSON.stringify({
-        timestamp: new Date().toISOString(),
-        error: errorMsg
-      }));
-    });
     
     // Initialize Google Sign-In
     window.addEventListener('load', () => {
-      // Show any previous errors for debugging
-      const lastError = localStorage.getItem('lastLoginError');
-      const lastGlobalError = localStorage.getItem('lastGlobalError');
-      const lastPromiseError = localStorage.getItem('lastPromiseError');
-      
-      if (lastError) {
-        const errorData = JSON.parse(lastError);
-        console.log('Previous login error:', errorData);
-      }
-      if (lastGlobalError) {
-        const errorData = JSON.parse(lastGlobalError);
-        console.log('Previous global error:', errorData);
-      }
-      if (lastPromiseError) {
-        const errorData = JSON.parse(lastPromiseError);
-        console.log('Previous promise error:', errorData);
-      }
-      
-      // Add debug button to view all stored errors
-      const debugBtn = document.createElement('button');
-      debugBtn.textContent = 'Show Debug Info';
-      debugBtn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9999;padding:5px;';
-      debugBtn.onclick = () => {
-        const allErrors = {
-          loginError: lastError ? JSON.parse(lastError) : null,
-          globalError: lastGlobalError ? JSON.parse(lastGlobalError) : null,
-          promiseError: lastPromiseError ? JSON.parse(lastPromiseError) : null
-        };
-        console.log('=== ALL DEBUG INFO ===', allErrors);
-        alert('Debug info logged to console. Check F12 > Console tab.');
-      };
-      document.body.appendChild(debugBtn);
-      
       loadGoogleConfig();
     });
     
     async function loadGoogleConfig() {
       try {
-        console.log('=== CONFIG DEBUG START ===');
-        console.log('Fetching config from:', '/api/config');
-        
         const response = await fetch('/api/config');
-        console.log('Config response status:', response.status);
-        console.log('Config response ok:', response.ok);
         
         if (!response.ok) {
           throw new Error(`Config fetch failed: ${response.status} ${response.statusText}`);
         }
         
         const config = await response.json();
-        console.log('Config received:', config);
-        
         GOOGLE_CLIENT_ID = config.googleClientId;
-        console.log('Google Client ID set:', GOOGLE_CLIENT_ID);
         
         if (!GOOGLE_CLIENT_ID) {
           throw new Error('Google Client ID not found in config');
@@ -219,11 +129,7 @@
           client_id: GOOGLE_CLIENT_ID,
           callback: handleCredentialResponse,
           auto_select: false,
-          cancel_on_tap_outside: false,
-          error_callback: (error) => {
-            console.error('Google Sign-In initialization error:', error);
-            showError(`Google Sign-In error: ${error.type || error.message || 'Unknown error'}`);
-          }
+          cancel_on_tap_outside: false
         });
         
         // Create a container for the Google button
@@ -238,37 +144,25 @@
         customButton.parentNode.insertBefore(buttonContainer, customButton.nextSibling);
         
         // Render the Google button in the container
-        try {
-          google.accounts.id.renderButton(
-            buttonContainer,
-            { 
-              theme: 'outline', 
-              size: 'large',
-              width: 250,
-              text: 'signin_with'
-            }
-          );
-        } catch (renderError) {
-          console.error('Google button render error:', renderError);
-          showError(`Button render failed: ${renderError.message}`);
-        }
+        google.accounts.id.renderButton(
+          buttonContainer,
+          { 
+            theme: 'outline', 
+            size: 'large',
+            width: 250,
+            text: 'signin_with'
+          }
+        );
         
         // Hide our custom button
         customButton.style.display = 'none';
         
-        console.log('=== CONFIG DEBUG END ===');
-        
       } catch (error) {
-        console.error('=== CONFIG ERROR ===');
-        console.error('Config load error:', error);
-        console.error('Error stack:', error.stack);
         showError('Failed to load Google configuration: ' + error.message);
       }
     }
     
     function handleCredentialResponse(response) {
-      addDebugLog('LOGIN ATTEMPT STARTED');
-      addDebugLog('Google credential response', response);
       showLoading(true);
       
       // Send the ID token to your server
@@ -282,34 +176,23 @@
           token: response.credential
         })
       })
-      .then(res => {
-        addDebugLog('Server response received', { status: res.status, ok: res.ok });
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
-        addDebugLog('Server response data', data);
         if (data.success) {
-          addDebugLog('Login successful - redirecting to general journal');
           showError('Login successful! Redirecting...');
           // Redirect directly to general journal
           setTimeout(() => {
             window.location.href = '/general-journal.html';
           }, 1000);
         } else {
-          addDebugLog('Login failed', { error: data.error });
           showError(data.error || 'Login failed');
         }
       })
       .catch(error => {
-        addDebugLog('Network error during login', { 
-          message: error.message, 
-          stack: error.stack 
-        });
         showError('Network error during login: ' + error.message);
       })
       .finally(() => {
         showLoading(false);
-        addDebugLog('LOGIN ATTEMPT FINISHED');
       });
     }
     
@@ -321,16 +204,6 @@
       const errorDiv = document.getElementById('error');
       errorDiv.textContent = message;
       errorDiv.style.display = 'block';
-      
-      // Also log to console with timestamp for persistence
-      const timestamp = new Date().toISOString();
-      console.error(`[${timestamp}] LOGIN ERROR:`, message);
-      
-      // Store error in localStorage for debugging
-      localStorage.setItem('lastLoginError', JSON.stringify({
-        timestamp,
-        error: message
-      }));
     }
     
     // Clear any existing session first
