@@ -3,25 +3,43 @@
 <head>
     <title>Redirecting to Google Drive...</title>
     <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="0">
 </head>
 <body>
     <div style="text-align: center; margin-top: 50px; font-family: Arial, sans-serif;">
         <h2>Redirecting to Google Drive...</h2>
         <p>If you are not redirected automatically, <a href="#" id="driveLink">click here</a>.</p>
+        <div id="errorMsg" style="display: none; color: red;">
+            <h2>Error: No Drive URL provided</h2>
+        </div>
     </div>
 
     <script>
-        // Get the drive URL from query parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const driveUrl = urlParams.get('url');
-        
-        if (driveUrl) {
-            document.getElementById('driveLink').href = driveUrl;
-            // Redirect immediately
-            window.location.href = driveUrl;
-        } else {
-            document.body.innerHTML = '<div style="text-align: center; margin-top: 50px; font-family: Arial, sans-serif;"><h2>Error: No Drive URL provided</h2></div>';
-        }
+        (function() {
+            try {
+                // Get the drive URL from query parameter
+                const urlParams = new URLSearchParams(window.location.search);
+                const driveUrl = urlParams.get('url');
+                
+                if (driveUrl) {
+                    const linkElement = document.getElementById('driveLink');
+                    linkElement.href = driveUrl;
+                    linkElement.textContent = 'Open Google Drive';
+                    
+                    // Use location.replace instead of location.href to avoid TrustedScript issues
+                    setTimeout(function() {
+                        location.replace(driveUrl);
+                    }, 100);
+                } else {
+                    document.querySelector('h2').style.display = 'none';
+                    document.querySelector('p').style.display = 'none';
+                    document.getElementById('errorMsg').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Redirect error:', error);
+                document.querySelector('h2').textContent = 'Error occurred during redirect';
+            }
+        })();
     </script>
 </body>
 </html>

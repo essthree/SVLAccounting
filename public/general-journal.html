@@ -410,8 +410,9 @@
                 const fileExtension = attachment.name ? attachment.name.split('.').pop().toLowerCase() : '';
                 let fileIcon = '📄';
                 
-                // Check if it's a folder first using mimeType
-                if (attachment.mimeType === "application/vnd.google-apps.folder") {
+                // Check if it's a folder first using mimeType OR URL structure
+                if (attachment.mimeType === "application/vnd.google-apps.folder" || 
+                    (attachment.url && attachment.url.includes('/folders/'))) {
                   fileIcon = '📁';
                 } else if (attachment.url && attachment.url.includes('drive.google.com')) {
                   // For documents, use file extension to determine icon with better colors
@@ -429,6 +430,17 @@
                 }
                 
                 const mimeType = attachment.mimeType || attachment.mime_type || '';
+                const attachmentType = attachment.type || 'other';
+                
+                // Debug logging to see what values we're getting
+                // console.log('Attachment debug:', {
+                //   name: attachment.name,
+                //   url: attachment.url,
+                //   mimeType: mimeType,
+                //   type: attachmentType,
+                //   fileIcon: fileIcon
+                // });
+                
                 return `
                   <div onclick="openAttachmentPreview('${attachment.url}', '${attachment.name}', '${fileExtension}', '${mimeType}')" 
                        style="cursor: pointer; padding: 8px; border-radius: 6px; background: #f8f9fa; border: 1px solid #e9ecef; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;"
@@ -436,7 +448,10 @@
                        onmouseout="this.style.background='#f8f9fa'; this.style.borderColor='#e9ecef';"
                        title="${attachment.name}">
                     <span style="font-size: 20px;">${fileIcon}</span>
-                    <span style="font-size: 11px; color: #333; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${attachment.name}</span>
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; min-width: 0;">
+                      <span style="font-size: 11px; color: #333; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${attachment.name}</span>
+                      <span style="font-size: 9px; color: #666; text-transform: capitalize; background: #e9ecef; padding: 1px 4px; border-radius: 8px; margin-top: 2px;">${attachmentType.replace('_', ' ')}</span>
+                    </div>
                   </div>
                 `;
               }).join('')}
@@ -457,6 +472,7 @@
     function openAttachmentPreview(url, name, fileExtension, mimeType) {
       // For Google Drive files, use redirect page to bypass TrustedScript issues
       if (url.includes('drive.google.com')) {
+        //console.log('Opening attachment:', { url, name, fileExtension, mimeType });
         
         // Extract ID from various Google Drive URL formats
         let driveId = null;
@@ -469,19 +485,22 @@
           driveId = url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
         }
         
+        //console.log('Extracted driveId:', driveId);
         
         let finalUrl = url;
         
-        // Use mimeType to determine proper URL format
+        // Use mimeType to determine proper URL format, but also check URL structure as fallback
         if (driveId) {
-          if (mimeType === "application/vnd.google-apps.folder") {
+          if (mimeType === "application/vnd.google-apps.folder" || url.includes('/folders/')) {
             // For folders, ensure proper folder URL
             finalUrl = `https://drive.google.com/drive/folders/${driveId}`;
+            //console.log('Detected folder, using folder URL:', finalUrl);
           } else {
-            // For documents, ensure proper file URL
+            // For documents, ensure proper file URL (revert to original working format)
             if (!url.includes('/view') && !url.includes('/edit')) {
               finalUrl = `https://drive.google.com/file/d/${driveId}/view`;
             }
+            //console.log('Detected document, using file URL:', finalUrl);
           }
         }
         

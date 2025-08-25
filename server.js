@@ -172,57 +172,57 @@ app.get("/journal", requireAuth, async (req, res) => {
 });
 
 // Debug endpoint to check collections and entry 59
-app.get("/debug/collections", async (req, res) => {
-  try {
-    //console.log('\n=== DEBUG: Checking Collections ===');
+// app.get("/debug/collections", async (req, res) => {
+//   try {
+//     //console.log('\n=== DEBUG: Checking Collections ===');
     
-    // List all collections
-    const collections = await mongoose.connection.db.listCollections().toArray();
-    //console.log('Available collections:', collections.map(c => c.name));
+//     // List all collections
+//     const collections = await mongoose.connection.db.listCollections().toArray();
+//     //console.log('Available collections:', collections.map(c => c.name));
     
-    // Check current collection
-    //console.log('Current model collection:', JournalEntry.collection.name);
-    //console.log('Database name:', JournalEntry.db.databaseName);
+//     // Check current collection
+//     //console.log('Current model collection:', JournalEntry.collection.name);
+//     //console.log('Database name:', JournalEntry.db.databaseName);
     
-    // Count entries in current collection
-    const currentCount = await JournalEntry.countDocuments();
-    //console.log(`Entries in current collection: ${currentCount}`);
+//     // Count entries in current collection
+//     const currentCount = await JournalEntry.countDocuments();
+//     //console.log(`Entries in current collection: ${currentCount}`);
     
-    // Try to find entry 59 in different possible collections
-    const possibleCollections = ['journalentries', 'JournalEntry', 'journal_entries'];
-    const results = {};
+//     // Try to find entry 59 in different possible collections
+//     const possibleCollections = ['journalentries', 'JournalEntry', 'journal_entries'];
+//     const results = {};
     
-    for (const collectionName of possibleCollections) {
-      try {
-        const collection = mongoose.connection.db.collection(collectionName);
-        const count = await collection.countDocuments();
-        const entry59 = await collection.findOne({ trans_id: "59" });
-        const entry59Num = await collection.findOne({ trans_id: 59 });
+//     for (const collectionName of possibleCollections) {
+//       try {
+//         const collection = mongoose.connection.db.collection(collectionName);
+//         const count = await collection.countDocuments();
+//         const entry59 = await collection.findOne({ trans_id: "59" });
+//         const entry59Num = await collection.findOne({ trans_id: 59 });
         
-        results[collectionName] = {
-          exists: count > 0,
-          totalEntries: count,
-          hasEntry59String: !!entry59,
-          hasEntry59Number: !!entry59Num
-        };
+//         results[collectionName] = {
+//           exists: count > 0,
+//           totalEntries: count,
+//           hasEntry59String: !!entry59,
+//           hasEntry59Number: !!entry59Num
+//         };
         
-        //console.log(`Collection "${collectionName}": ${count} entries, entry 59 as string: ${!!entry59}, as number: ${!!entry59Num}`);
-      } catch (err) {
-        results[collectionName] = { error: err.message };
-      }
-    }
+//         //console.log(`Collection "${collectionName}": ${count} entries, entry 59 as string: ${!!entry59}, as number: ${!!entry59Num}`);
+//       } catch (err) {
+//         results[collectionName] = { error: err.message };
+//       }
+//     }
     
-    res.json({
-      availableCollections: collections.map(c => c.name),
-      currentCollection: JournalEntry.collection.name,
-      database: JournalEntry.db.databaseName,
-      currentCollectionCount: currentCount,
-      collectionTests: results
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+//     res.json({
+//       availableCollections: collections.map(c => c.name),
+//       currentCollection: JournalEntry.collection.name,
+//       database: JournalEntry.db.databaseName,
+//       currentCollectionCount: currentCount,
+//       collectionTests: results
+//     });
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// });
 
 // Get single journal entry (using MongoDB _id) (protected)
 app.get("/journal/:id", requireAuth, async (req, res) => {

@@ -235,14 +235,13 @@
 
   .attachment-row {
     display: grid;
-    grid-template-columns: 120px 1fr;
+    grid-template-columns: 120px auto;
     gap: 10px;
     margin-bottom: 10px;
     align-items: center;
   }
 
-  .attachment-type,
-  .attachment-url {
+  .attachment-type {
     padding: 8px;
     border: 1px solid #e9ecef;
     border-radius: 4px;
@@ -272,6 +271,57 @@
 
   .browse-drive-btn:hover {
     background-color: #3367d6;
+  }
+
+  .attachment-display {
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    margin-left: 5px;
+    max-width: 200px;
+  }
+
+  .attachment-display:hover {
+    background: #e9ecef;
+    border-color: #007bff;
+  }
+
+  .file-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .attachment-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .attachment-name {
+    font-size: 11px;
+    color: #333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+  }
+
+  .attachment-type-badge {
+    font-size: 9px;
+    color: #666;
+    text-transform: capitalize;
+    background: #e9ecef;
+    padding: 1px 4px;
+    border-radius: 8px;
+    margin-top: 2px;
   }
 
   .attachment-url-container {
@@ -505,7 +555,7 @@ document.getElementById("journalForm").addEventListener("submit", async e => {
   
   for (const row of attachmentRows) {
     const type = row.querySelector('.attachment-type').value;
-    const url = row.querySelector('.attachment-url').value;
+    const url = row.dataset.attachmentUrl || '';
     
     if (url) {
       let mimeType = '';
@@ -550,8 +600,7 @@ document.getElementById("journalForm").addEventListener("submit", async e => {
       }
       
       // Get filename from picker data or use a default
-      const urlInput = row.querySelector('.attachment-url');
-      const name = urlInput.dataset.fileName || 'Google Drive File';
+      const name = row.dataset.fileName || 'Google Drive File';
       
       attachments.push({ type, name, url, mimeType });
     }
@@ -605,17 +654,10 @@ document.getElementById("journalForm").addEventListener("submit", async e => {
       messageDiv.className = "success";
       messageDiv.style.display = "block";
       
-      // Reset form
-      document.getElementById("journalForm").reset();
-      document.getElementById('journalLines').innerHTML = '';
-      lineCounter = 0;
-      addJournalLine();
-      updateTotals();
-      
-      // Hide message after 3 seconds
+      // Redirect to General Journal after showing confirmation
       setTimeout(() => {
-        messageDiv.style.display = "none";
-      }, 3000);
+        window.location.href = 'general-journal.html';
+      }, 2000);
     } else if (res.status === 401) {
       window.location.href = '/login.html';
       return;
@@ -647,20 +689,34 @@ function extractGoogleDriveId(url) {
 }
 
 // Add attachment functionality
-function addAttachment() {
+function addAttachment(type = 'receipt', name = '', url = '', mimeType = '') {
   const container = document.getElementById('attachments-container');
   const newRow = document.createElement('div');
   newRow.className = 'attachment-row';
+  
+  // Store URL, filename, and mimeType in data attributes if provided
+  if (url) {
+    newRow.dataset.attachmentUrl = url;
+    newRow.dataset.fileName = name;
+    newRow.dataset.mimeType = mimeType;
+  }
+  
   newRow.innerHTML = `
     <select class="attachment-type">
-      <option value="receipt">Receipt</option>
-      <option value="check">Check</option>
-      <option value="deposit_slip">Deposit Slip</option>
-      <option value="other">Other</option>
+      <option value="receipt" ${type === 'receipt' ? 'selected' : ''}>Receipt</option>
+      <option value="check" ${type === 'check' ? 'selected' : ''}>Check</option>
+      <option value="deposit_slip" ${type === 'deposit_slip' ? 'selected' : ''}>Deposit Slip</option>
+      <option value="other" ${type === 'other' ? 'selected' : ''}>Other</option>
     </select>
     <div class="attachment-controls">
-      <input type="url" class="attachment-url" placeholder="Google Drive link">
-      <button type="button" class="browse-drive-btn" onclick="openDrivePicker(this)">Browse Drive</button>
+      <button type="button" class="browse-drive-btn" onclick="openDrivePicker(this)" ${url ? 'style="display: none;"' : ''}>Browse Drive</button>
+      <div class="attachment-display" onclick="displayAttachment(this)" ${!url ? 'style="display: none;"' : ''} title="View attachment">
+        <span class="file-icon">📄</span>
+        <div class="attachment-info">
+          <span class="attachment-name">Select file...</span>
+          <span class="attachment-type-badge">${type.replace('_', ' ')}</span>
+        </div>
+      </div>
       <button type="button" class="remove-attachment-btn" onclick="removeAttachment(this)">Remove</button>
     </div>
   `;
@@ -668,7 +724,52 @@ function addAttachment() {
 }
 
 function removeAttachment(button) {
-  button.parentElement.remove();
+  button.parentElement.parentElement.remove();
+}
+
+function displayAttachment(button) {
+  const attachmentRow = button.closest('.attachment-row');
+  const url = attachmentRow.dataset.attachmentUrl;
+  const mimeType = attachmentRow.dataset.mimeType;
+  
+  if (url) {
+    // For Google Drive files, construct proper URL format
+    if (url.includes('drive.google.com')) {
+      let finalUrl = url;
+      
+      // Extract ID from various Google Drive URL formats
+      let driveId = null;
+      
+      if (url.includes('/folders/')) {
+        driveId = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1];
+      } else if (url.includes('/file/d/')) {
+        driveId = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+      } else if (url.includes('/open?id=')) {
+        driveId = url.match(/id=([a-zA-Z0-9_-]+)/)?.[1];
+      }
+      
+      if (driveId) {
+        // Check mimeType first, then fall back to URL pattern
+        const isFolder = mimeType === "application/vnd.google-apps.folder" || url.includes('/folders/');
+        
+        if (isFolder) {
+          finalUrl = `https://drive.google.com/drive/folders/${driveId}`;
+        } else {
+          // For documents, ensure proper file URL
+          if (!url.includes('/view') && !url.includes('/edit')) {
+            finalUrl = `https://drive.google.com/file/d/${driveId}/view`;
+          }
+        }
+      }
+      
+      window.open(finalUrl, '_blank');
+    } else {
+      // For other URLs, open directly
+      window.open(url, '_blank');
+    }
+  } else {
+    alert('No attachment URL available');
+  }
 }
 
 document.getElementById('addAttachmentBtn').addEventListener('click', () => {
@@ -713,8 +814,8 @@ function loadGoogleAPIs() {
 }
 
 function openDrivePicker(button) {
-  // Get the URL input field for this attachment row
-  const urlInput = button.parentElement.querySelector('.attachment-url');
+  // Get the attachment row
+  const attachmentRow = button.closest('.attachment-row');
   
   if (!pickerApiLoaded) {
     alert('Google Picker API is still loading. Please try again in a moment.');
@@ -728,7 +829,7 @@ function openDrivePicker(button) {
     callback: (response) => {
       if (response.access_token) {
         oauthToken = response.access_token;
-        createPicker(urlInput);
+        createPicker(attachmentRow);
       } else {
         console.error('Failed to get access token');
         alert('Google Drive authentication failed. Please try again.');
@@ -737,7 +838,7 @@ function openDrivePicker(button) {
   }).requestAccessToken();
 }
 
-function createPicker(urlInput) {
+function createPicker(attachmentRow) {
   // Create multiple views for better navigation
   const docsView = new google.picker.DocsView(google.picker.ViewId.DOCS)
     .setIncludeFolders(true)
@@ -760,7 +861,7 @@ function createPicker(urlInput) {
     .setTitle('Select File or Folder from Google Drive')
     .setSize(1051, 650)
     .setDeveloperKey(GOOGLE_API_KEY)
-    .setCallback((data) => pickerCallback(data, urlInput));
+    .setCallback((data) => pickerCallback(data, attachmentRow));
     
   if (oauthToken) {
     pickerBuilder.setOAuthToken(oauthToken);
@@ -770,21 +871,68 @@ function createPicker(urlInput) {
   picker.setVisible(true);
 }
 
-function pickerCallback(data, urlInput) {
+function pickerCallback(data, attachmentRow) {
   if (data[google.picker.Response.ACTION] == google.picker.Action.PICKED) {
     const doc = data[google.picker.Response.DOCUMENTS][0];
     const fileId = doc[google.picker.Document.ID];
     const fileName = doc[google.picker.Document.NAME];
+    const mimeType = doc[google.picker.Document.MIME_TYPE];
     
-    // Create shareable link
-    const shareableUrl = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
+    // Create shareable link - use proper URL format based on mimeType
+    let shareableUrl;
+    if (mimeType === "application/vnd.google-apps.folder") {
+      shareableUrl = `https://drive.google.com/drive/folders/${fileId}`;
+    } else {
+      shareableUrl = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
+    }
     
-    // Set the URL in the input field
-    urlInput.value = shareableUrl;
+    // Store URL, filename, and mimeType in the attachment row's data attributes
+    attachmentRow.dataset.attachmentUrl = shareableUrl;
+    attachmentRow.dataset.fileName = fileName;
+    attachmentRow.dataset.mimeType = mimeType;
     
-    // Store filename in the URL input's data attribute for later use
-    urlInput.dataset.fileName = fileName;
+    // Show the attachment display and hide the browse button
+    const browseBtn = attachmentRow.querySelector('.browse-drive-btn[onclick*="openDrivePicker"]');
+    const attachmentDisplay = attachmentRow.querySelector('.attachment-display[onclick*="displayAttachment"]');
+    browseBtn.style.display = 'none';
+    attachmentDisplay.style.display = 'flex';
+    
+    // Update the attachment display with proper icon and filename
+    updateAttachmentDisplay(attachmentRow, fileName, mimeType);
   }
+}
+
+// Function to update attachment display with proper icon and filename
+function updateAttachmentDisplay(attachmentRow, fileName, mimeType) {
+  const fileIcon = attachmentRow.querySelector('.file-icon');
+  const attachmentName = attachmentRow.querySelector('.attachment-name');
+  
+  if (!fileIcon || !attachmentName) return;
+  
+  // Determine the appropriate icon based on mimeType and file extension
+  const fileExtension = fileName ? fileName.split('.').pop().toLowerCase() : '';
+  let icon = '📄';
+  
+  // Check if it's a folder first using mimeType
+  if (mimeType === "application/vnd.google-apps.folder") {
+    icon = '📁';
+  } else if (mimeType && mimeType.includes('drive.google.com')) {
+    // For documents, use file extension to determine icon with better colors
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileExtension)) {
+      icon = '🖼️';
+    } else if (['pdf'].includes(fileExtension)) {
+      icon = '🔴'; // Red circle for PDF
+    } else if (['doc', 'docx'].includes(fileExtension)) {
+      icon = '🔵'; // Blue circle for Word docs
+    } else if (['xls', 'xlsx'].includes(fileExtension)) {
+      icon = '🟢'; // Green circle for Excel
+    } else {
+      icon = '🟡'; // Yellow circle for other files
+    }
+  }
+  
+  fileIcon.textContent = icon;
+  attachmentName.textContent = fileName || 'Google Drive File';
 }
 
 // Initialize Google APIs when page loads
